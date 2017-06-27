@@ -19,6 +19,7 @@ class Node {
     void eval();
     float value() const;
     float gradient(const Node::ptr& node);
+    std::string to_string() const;
 
   protected:
     std::unique_ptr<Kernel> kernel_;

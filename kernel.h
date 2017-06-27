@@ -28,6 +28,10 @@ class Kernel {
       return 0.0f;
     }
 
+    virtual std::string to_string() const {
+      return std::string();
+    }
+
   protected:
     float value_;
 };
@@ -37,6 +41,8 @@ class Value : public Kernel {
   public:
     Value(float value)
       : Kernel(value) { }
+
+    virtual std::string to_string() const override;
 };
 
 class Add : public Kernel {
@@ -45,6 +51,7 @@ class Add : public Kernel {
     
     virtual void forward() override;
     virtual float gradient(const std::shared_ptr<Node>& node) override;
+    virtual std::string to_string() const override;
 
   private:
     std::shared_ptr<Node> a_;
@@ -58,6 +65,7 @@ class Mul : public Kernel {
 
     virtual void forward() override;
     float gradient(const std::shared_ptr<Node>& node) override;
+    virtual std::string to_string() const override;
 
   private:
     std::shared_ptr<Node> a_;

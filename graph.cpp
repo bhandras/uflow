@@ -1,3 +1,4 @@
+#include <string>
 #include <iostream>
 
 #include "graph.h"
@@ -17,6 +18,10 @@ float Node::value() const {
 
 float Node::gradient(const Node::ptr& node) {
   return kernel_->gradient(node);
+}
+
+std::string Node::to_string() const {
+  return kernel_->to_string();
 }
 
 Node::ptr Graph::var(float value) {
@@ -96,20 +101,47 @@ void Graph::eval() {
     node->eval();
   }
 
+  std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, float>> work_gradients;
   gradients_.clear();
-  gradients_[top_order.back()] = 1.0f;
-
+  
   for (int i = top_order.size() - 1; i >= 0; --i) {
-    std::cout << "node: " << top_order[i]->value() << std::endl;
-    for (auto& n_suc : adj_[top_order[i]]) {
-      float grad_suc = gradients_[n_suc];
-      std::cout << "grad_suc: " << n_suc->value() << ", "<< grad_suc << std::endl;
+    auto& node = top_order[i];
+    auto& suc_nodes = adj_[top_order[i]];
+    auto& pre_nodes = pre[top_order[i]];
 
-      for (auto& n_pre : pre[top_order[i]]) {
-        std::cout << "grad_pre: " << n_pre->value() << "; "<< top_order[i]->gradient(n_pre) << std::endl;
-        gradients_[n_pre] += grad_suc * top_order[i]->gradient(n_pre);
+    std::cout << "node: " << node->to_string() << std::endl;
+    
+    if (suc_nodes.empty()) {
+      // result (last) node
+      float grad_suc = 1.0f;
+
+      for (auto& p : pre_nodes) {
+        std::cout << "grad_pre: " << p->to_string() << "; " << node->gradient(p) << std::endl;
+
+        work_gradients[node][p] += grad_suc * node->gradient(p);
+      }
+    } else { 
+      for (auto& s : suc_nodes) {
+        float grad_suc = work_gradients[s][node];
+        
+        std::cout << "grad_suc: " << s->to_string() << ", " << grad_suc << std::endl;
+
+        if (!pre_nodes.empty()) {
+          for (auto& n_pre : pre_nodes) {
+            
+            std::cout << "grad_pre: " << n_pre->to_string() << "; " 
+              << node->gradient(n_pre) << std::endl;
+            
+            work_gradients[node][n_pre] += grad_suc * node->gradient(n_pre);
+          }
+        } else {
+          // leaf node
+          gradients_[top_order[i]] += grad_suc;
+        }
       }
     }
+    
+    std::cout << "---" << std::endl;
   }
 }
 
