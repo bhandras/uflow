@@ -26,5 +26,8 @@ int main() {
   arr = NDArray({3, 3, 4});
   std::cout << "---" << std::endl << arr.to_string() << std::endl;
   
-  return 0;
+   arr = NDArray({2, 3, 3, 4});
+   std::cout << "---" << std::endl << arr.to_string() << std::endl;
+   
+   return 0;
 }

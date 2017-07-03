@@ -47,76 +47,33 @@ class NDArray {
       return true;
     }
 
-    void print1(std::stringstream& ss, int& pos, int padding) const {
-      int n = shape_[shape_.size() - 1];
-
-      if (padding > 0) {
-        ss << std::string(padding, ' ');
-      }
-      ss << "[ ";
-      for (int i = 0; i < n; ++i) {
-        ss << arr_[pos++];
-        if (i != n - 1) {
-          ss << ", ";
-        }
-      }
-      ss << " ]";
-    }
-
-    void print2(std::stringstream& ss, int& pos, int padding) const {
+    void to_string_helper(std::stringstream& ss, int dim, int& pos, int level) const {
       int ndim = shape_.size();
-      int n = shape_[ndim - 2];
-
-      if (padding > 0) {
-        ss << std::string(padding, ' ');
-      }
- 
-      ss << "[";
-      for (int i = 0; i < n; ++i) {
-        print1(ss, pos, i == 0 ? 0 : padding+1);
-        if (i != n - 1) {
-          ss << ", " << std::endl;
+      if (dim == ndim - 1) {
+        ss << "[";
+        for (int i = 0; i < shape_[dim]; ++i) {
+          ss << arr_[pos++];
+          if (i != shape_[dim] - 1) {
+            ss << ", ";
+          }
         }
-      }
-
-      ss << "]";
-    }
-
-    void print3(std::stringstream& ss, int& pos, int padding) const {
-      int ndim = shape_.size();
-      int n = shape_[ndim - 3];
-
-      if (padding > 0) {
-        ss << std::string(padding, ' ');
-      }
-      
-      ss << "[";
-      for (int i = 0; i < n; ++i) {
-        print2(ss, pos, i == 0 ? 0 : padding );
-        if (i != n - 1) {
-          ss << ", " << std::endl << std::endl;
+        ss << "]";
+      } else {
+        ss << "[";
+        for (int i = 0; i < shape_[dim]; ++i) {
+          to_string_helper(ss, dim + 1, pos, level + 1);
+          if (i != shape_[dim] - 1) {
+            ss << "," << std::endl << std::string(level, ' ');
+          }
         }
+        ss << "]";
       }
-
-      ss << "]";
-   
     }
 
     std::string to_string() const {
-      int ndim = shape_.size();
       std::stringstream ss;
-      
       int pos = 0;
-      if (ndim == 1) {
-        print1(ss, pos, 0);
-      }
-      else if (ndim == 2) {
-        print2(ss, pos, 0);
-      }
-      else if (ndim == 3) {
-        print3(ss, pos, 0);
-      }
-
+      to_string_helper(ss, 0, pos, 1);
       return ss.str();
     }
 
