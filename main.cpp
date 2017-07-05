@@ -42,5 +42,9 @@ int main() {
  
   auto c = a.dot(b);
   std::cout << std::endl << c.to_string() << std::endl;
+
+  a.arange(4);
+  b.arange(4);
+  std::cout << a.dot(b).to_string() << std::endl;
   return 0;
 }
