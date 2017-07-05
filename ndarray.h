@@ -96,40 +96,30 @@ class NDArray {
 
     NDArray& operator=(const NDArray& other) = default;
 
-    NDArray operator+(const NDArray& other) const {
-      NDArray res = *this;
-      res += other;
-      return res;
-    }
-
-    NDArray& operator+=(const NDArray& other) {
-      if (shape_ == other.shape_) {
-        for (size_t i = 0; i < arr_.size(); ++i) {
-          arr_[i] += other.arr_[i];
-        }
-      } else {
+    NDArray add(const NDArray& other) const {
+      if (shape_ != other.shape_) {
         throw NDArray::ex_incompatible_shapes("add", shape_, other.shape_);
       }
 
-      return *this;
-    }
-
-    NDArray operator*(const NDArray& other) const {
       NDArray res = *this;
-      res *= other;
+      for (size_t i = 0; i < arr_.size(); ++i) {
+        res.arr_[i] += other.arr_[i];
+      }
+
       return res;
     }
 
-    NDArray operator*=(const NDArray& other) {
-      if (shape_ == other.shape_) {
-        for (size_t i = 0; i < arr_.size(); ++i) {
-          arr_[i] *= other.arr_[i];
-        }
-      } else {
-        throw NDArray::ex_incompatible_shapes("mul", shape_, other.shape_);
+    NDArray mul(const NDArray& other) const {
+      if (shape_ != other.shape_) {
+        throw NDArray::ex_incompatible_shapes("add", shape_, other.shape_);
       }
 
-      return *this;
+      NDArray res = *this;
+      for (size_t i = 0; i < arr_.size(); ++i) {
+        res.arr_[i] *= other.arr_[i];
+      }
+
+      return res;
     }
 
     NDArray dot(const NDArray& other) const {
