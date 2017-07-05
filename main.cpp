@@ -33,18 +33,20 @@ int main() {
   NDArray a;
   a.arange(18);
   a.reshape({2, 3, 3});
-  std::cout << a.to_string() << std::endl;
+  std::cout << "a=" << std::endl << a.to_string() << std::endl;
   
   NDArray b;
   b.arange(18);
   b.reshape({2, 3, 3});
-  std::cout << b.to_string() << std::endl;
+  std::cout << "b=" << std::endl << b.to_string() << std::endl;
  
   auto c = a.dot(b);
-  std::cout << std::endl << c.to_string() << std::endl;
+  std::cout << "(a dot b)= " << std::endl << c.to_string() << std::endl;
 
   a.arange(4);
+  std::cout << "a=" << a.to_string() << std::endl;
   b.arange(4);
-  std::cout << a.dot(b).to_string() << std::endl;
+  std::cout << "b=" << b.to_string() << std::endl;
+  std::cout << "(a dot b)="<< a.dot(b).to_string() << std::endl;
   return 0;
 }
