@@ -153,7 +153,7 @@ class NDArray {
       if (ndim == 1) {
         NDArray res({1});
 
-        for (size_t i = 0; i < ndim; ++i) {
+        for (size_t i = 0; i < shape_[ndim - 1]; ++i) {
           res.arr_[0] += arr_[i] * other.arr_[i];
         }
 
