@@ -32,15 +32,15 @@ int main() {
 
   NDArray a;
   a.arange(18);
-  a.reshape({1, 3, 3});
+  a.reshape({2, 3, 3});
   std::cout << a.to_string() << std::endl;
   
   NDArray b;
   b.arange(18);
-  b.reshape({1, 2, 3, 3});
+  b.reshape({2, 3, 3});
   std::cout << b.to_string() << std::endl;
  
-  // auto c = a.dot(b);
-  // std::cout << std::endl << c.to_string() << std::endl;
+  auto c = a.dot(b);
+  std::cout << std::endl << c.to_string() << std::endl;
   return 0;
 }

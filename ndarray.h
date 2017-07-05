@@ -1,10 +1,8 @@
 #ifndef _ndarray_h_
 #define _ndarray_h_
 
-#include <stack>
 #include <vector>
-#include <sstream>
-
+#include "util.h"
 #include "exception.h"
 
 class NDArray {
@@ -52,19 +50,18 @@ class NDArray {
       return shape_;
     }
 
-    bool reshape(const std::vector<size_t>& shape) {
+    void reshape(const std::vector<size_t>& shape) {
       size_t new_size = 1;
       for (auto dim : shape) {
         new_size *= dim;
       }
 
       if (new_size != size_) {
-        return false;
+        throw NDArray::ex_incompatible_shapes("reshape", shape_, shape);
       }
 
       shape_ = shape;
       update_shape();
-      return true;
     }
 
     void to_string_helper(std::stringstream& ss, int dim, int& pos, int level) const {
@@ -111,7 +108,7 @@ class NDArray {
           arr_[i] += other.arr_[i];
         }
       } else {
-        throw ValueError("shapes are not compatible for addition");
+        throw NDArray::ex_incompatible_shapes("add", shape_, other.shape_);
       }
 
       return *this;
@@ -129,7 +126,7 @@ class NDArray {
           arr_[i] *= other.arr_[i];
         }
       } else {
-        throw ValueError("shapes are not compatible for multiplication");
+        throw NDArray::ex_incompatible_shapes("mul", shape_, other.shape_);
       }
 
       return *this;
@@ -137,18 +134,18 @@ class NDArray {
 
     NDArray dot(const NDArray& other) const {
       if (shape_.size() != other.shape_.size()) {
-        throw ValueError("dot: incompatible shapes " + info() + " and " + other.info());
+        throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
       }
 
       size_t ndim = shape_.size();
       if (ndim > 1 && shape_[ndim - 1] != other.shape_[ndim - 2]) {
-        throw ValueError("dot: incompatible shapes " + info() + " and " + other.info());
+        throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
       }
 
       if (ndim > 2) {
         for (size_t i = 0; i < ndim - 2; ++i) {
           if (shape_[i] != other.shape_[i]) {
-            throw ValueError("dot: incompatible shapes " + info() + " and " + other.info());
+            throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
           }
         }
       }
@@ -201,23 +198,23 @@ class NDArray {
       return res;
     }
 
-    std::string info() const {
-      std::stringstream ss;
-      ss << "(";
-      for (size_t i = 0; i < shape_.size(); ++i) {
-        ss << shape_[i];
-        if (i != shape_.size() - 1) {
-          ss << ",";
-        }
-      }
-      ss << ")";
-      return ss.str();
+    static ValueError ex_incompatible_shapes(
+        const char* prefix,
+        const std::vector<size_t>& a,
+        const std::vector<size_t>& b) {
+       
+      return ValueError(std::string(prefix)
+          + ": "
+          + "incompatible shapes "
+          + str(a)
+          + " and "
+          + str(b));
     }
 
   private:
+    size_t size_;
     std::vector<size_t> shape_;
     std::vector<size_t> stride_;
-    size_t size_;
     std::vector<float> arr_;
 };
 
