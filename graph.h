@@ -5,6 +5,7 @@
 #include <queue>
 #include <vector>
 #include <memory>
+#include <ostream>
 #include <unordered_map>
 
 #include "ndarray.h"
@@ -21,12 +22,11 @@ class Node {
     void eval();
     const NDArray& value() const;
     NDArray gradient(const Node::ptr& node);
-    std::string to_string() const;
+    std::string str() const;
 
   protected:
     std::unique_ptr<Kernel> kernel_;
 };
-
 
 class Graph {
   public:
@@ -42,6 +42,8 @@ class Graph {
     std::unordered_map<Node::ptr, NDArray> gradients_;
 };
 
-
+std::ostream& operator<<(std::ostream& os, const Node& node);
+std::ostream& operator<<(std::ostream& os, const Node::ptr& node);
+ 
 #endif // _graph_h_
 

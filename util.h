@@ -2,10 +2,11 @@
 #define _util_h_
 
 #include <vector>
+#include <ostream>
 #include <sstream>
 
 template <class T>
-std::string str(const std::vector<T>& v) {
+std::string vstr(const std::vector<T>& v) {
   std::stringstream ss;
   ss << "(";
   for (size_t i = 0; i < v.size(); ++i) {

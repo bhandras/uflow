@@ -5,6 +5,7 @@
 #include "util.h"
 #include "exception.h"
 
+
 class NDArray {
   public:
     NDArray() 
@@ -25,7 +26,7 @@ class NDArray {
       if ((shape_.empty() && dim != 0)
           || dim > shape_.size()) {
         throw RuntimeError("cannot unsqueeze "
-            + str(shape_)
+            + vstr(shape_)
             + " at "
             + std::to_string(dim));
       }
@@ -83,8 +84,9 @@ class NDArray {
       update_shape();
     }
 
-    void to_string_helper(std::stringstream& ss, int dim, int& pos, int level) const {
+    void str_helper(std::stringstream& ss, int dim, int& pos, int level) const {
       int ndim = shape_.size();
+
       if (dim == ndim - 1) {
         ss << "[";
         for (int i = 0; i < shape_[dim]; ++i) {
@@ -97,7 +99,7 @@ class NDArray {
       } else {
         ss << "[";
         for (int i = 0; i < shape_[dim]; ++i) {
-          to_string_helper(ss, dim + 1, pos, level + 1);
+          str_helper(ss, dim + 1, pos, level + 1);
           if (i != shape_[dim] - 1) {
             ss << "," << std::endl << std::string(level, ' ');
           }
@@ -106,13 +108,13 @@ class NDArray {
       }
     }
 
-    std::string to_string() const {
+    std::string str() const {
       if (shape_.empty()) {
         return "[]";
       }
       std::stringstream ss;
       int pos = 0;
-      to_string_helper(ss, 0, pos, 1);
+      str_helper(ss, 0, pos, 1);
       return ss.str();
     }
 
@@ -226,9 +228,9 @@ class NDArray {
       return ValueError(std::string(prefix)
           + ": "
           + "incompatible shapes "
-          + str(a)
+          + vstr(a)
           + " and "
-          + str(b));
+          + vstr(b));
     }
 
   private:
@@ -238,6 +240,7 @@ class NDArray {
     std::vector<float> arr_;
 };
 
+std::ostream& operator<<(std::ostream& os, const NDArray& arr);
 
 #endif // _ndarray_h_
 

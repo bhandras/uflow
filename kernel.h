@@ -30,7 +30,7 @@ class Kernel {
       return NDArray({1});
     }
 
-    virtual std::string to_string() const {
+    virtual std::string str() const {
       return std::string();
     }
 
@@ -44,7 +44,7 @@ class Value : public Kernel {
     Value(NDArray value)
       : Kernel(value) { }
 
-    virtual std::string to_string() const override;
+    virtual std::string str() const override;
 };
 
 class Add : public Kernel {
@@ -53,7 +53,7 @@ class Add : public Kernel {
     
     virtual void forward() override;
     virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
-    virtual std::string to_string() const override;
+    virtual std::string str() const override;
 
   private:
     std::shared_ptr<Node> a_;
@@ -67,7 +67,7 @@ class Mul : public Kernel {
 
     virtual void forward() override;
     virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
-    virtual std::string to_string() const override;
+    virtual std::string str() const override;
 
   private:
     std::shared_ptr<Node> a_;
@@ -78,9 +78,10 @@ class Mul : public Kernel {
 class Dot : public Kernel {
   public:
     Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    
     virtual void forward() override;
     virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
-    virtual std::string to_string() const override;
+    virtual std::string str() const override;
 
   private:
     std::shared_ptr<Node> a_;

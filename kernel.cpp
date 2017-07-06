@@ -3,8 +3,8 @@
 #include "graph.h"
     
 
-std::string Value::to_string() const {
-  return value_.to_string();
+std::string Value::str() const {
+  return value_.str();
 }
 
 Add::Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
@@ -21,8 +21,8 @@ NDArray Add::gradient(const std::shared_ptr<Node>& node)  {
   return ones;
 }
 
-std::string Add::to_string() const {
-  return "(" + a_->value().to_string() + " + " + b_->value().to_string() +  ")";
+std::string Add::str() const {
+  return "(" + a_->value().str() + " + " + b_->value().str() +  ")";
 }
 
 Mul::Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
@@ -39,8 +39,8 @@ NDArray Mul::gradient(const std::shared_ptr<Node>& node) {
   return zero;
 }
 
-std::string Mul::to_string() const {
-  return "(" + a_->value().to_string() + " * " + b_->value().to_string() + ")";
+std::string Mul::str() const {
+  return "(" + a_->value().str() + " * " + b_->value().str() + ")";
 }
 
 Dot::Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
@@ -57,8 +57,8 @@ NDArray Dot::gradient(const std::shared_ptr<Node>& node) {
   return zero;
 }
 
-std::string Dot::to_string() const {
-  return "(" + a_->value().to_string() + " dot " + b_->value().to_string() + ")";
+std::string Dot::str() const {
+  return "(" + a_->value().str() + " dot " + b_->value().str() + ")";
 }
 
 

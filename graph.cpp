@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 
+#include "util.h"
 #include "graph.h"
 #include "kernel.h"
 
@@ -20,8 +21,8 @@ NDArray Node::gradient(const Node::ptr& node) {
   return kernel_->gradient(node);
 }
 
-std::string Node::to_string() const {
-  return kernel_->to_string();
+std::string Node::str() const {
+  return kernel_->str();
 }
 
 Node::ptr Graph::var(NDArray value) {
@@ -117,36 +118,41 @@ void Graph::eval() {
     auto& suc_nodes = adj_[top_order[i]];
     auto& pre_nodes = pre[top_order[i]];
 
-    std::cout << "node: " << node->to_string() << std::endl;
     
     if (suc_nodes.empty()) {
+      std::cout << "result node: " << node << std::endl;
       // result (last) node => grad_suc = 1
-      for (auto& p : pre_nodes) {
-        std::cout << "grad_pre: " << p->to_string() << "; " << node->gradient(p).to_string() << std::endl;
+      for (auto& n_pre : pre_nodes) {
 
-        if (work_gradients[node].count(p) == 0) {
-          work_gradients[node][p] = node->gradient(p);
+        // grad of 'node' w.r.t 'n_pre'
+        auto grad_pre = node->gradient(n_pre);
+        std::cout << "grad_pre: " << n_pre << "; " << grad_pre << std::endl;
+
+        if (work_gradients[node].count(n_pre) == 0) {
+          work_gradients[node][n_pre] = grad_pre;
         } else {
-          work_gradients[node][p].add_(node->gradient(p));
+          work_gradients[node][n_pre].add_(grad_pre);
         }
       }
     } else {
-      for (auto& s : suc_nodes) {
-        auto grad_suc = work_gradients[s][node];
+      std::cout << "node: " << node << std::endl;
+      for (auto& n_suc : suc_nodes) {
+        const auto& grad_suc = work_gradients[n_suc][node];
         
-        std::cout << "grad_suc: " << s->to_string() << ", " << grad_suc.to_string() << std::endl;
+        std::cout << "grad_suc: " << n_suc << "; " << grad_suc << std::endl;
 
         if (!pre_nodes.empty()) {
           for (auto& n_pre : pre_nodes) {
-            
-            std::cout << "grad_pre: " << n_pre->to_string() << "; " 
-              << node->gradient(n_pre).to_string() << std::endl;
            
-            auto g = grad_suc.mul(node->gradient(n_pre));
+            // grad of 'node' w.r.t 'n_pre'
+            auto grad_pre = node->gradient(n_pre);
+            std::cout << "grad_pre: " << n_pre << "; " << grad_pre << std::endl; 
+            auto grad = grad_suc.mul(grad_pre);
+
             if (work_gradients[node].count(n_pre) == 0) {
-              work_gradients[node][n_pre] = g;
+              work_gradients[node][n_pre] = grad;
             } else {
-              work_gradients[node][n_pre].add_(g);
+              work_gradients[node][n_pre].add_(grad);
             }
           }
         } else {
@@ -169,7 +175,18 @@ NDArray Graph::gradient(const Node::ptr& node) const {
   if (it != gradients_.end()) {
     return it->second;
   }
-  // TODO
-  return NDArray({1}); // 0.0f;
+  
+  return NDArray();
+}
+
+
+std::ostream& operator<<(std::ostream& os, const Node& node) {
+  os << node.str();
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Node::ptr& node) {
+  os << node->str();
+  return os;
 }
 
