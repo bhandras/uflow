@@ -4,17 +4,31 @@
 #include <string>
 #include <exception>
 
-class ValueError : public std::exception {
+class Exception : public std::exception {
   public:
-    ValueError(const std::string& msg)
-      : msg_(msg) { }
+    Exception(const std::string& type, const std::string& msg)
+      : type_(type), msg_(msg) { }
 
     virtual const char* what() const throw() {
-      return ("ValueError => " + msg_).c_str();
+      return (type_ + " => " + msg_).c_str();
     }
   
-  private:
+  protected:
+    std::string type_;
     std::string msg_;
+
+};
+
+class ValueError : public Exception {
+  public:
+    ValueError(const std::string& msg) 
+      : Exception("ValueError", msg) { }
+};
+
+class RuntimeError : public Exception {
+  public:
+    RuntimeError(const std::string& msg)
+      : Exception("RuntimeError", msg) { }
 };
 
 #endif // _exception_h_

@@ -7,25 +7,27 @@
 #include <memory>
 #include <unordered_map>
 
+#include "ndarray.h"
+
 class Node;
 
 class Kernel {
   public:
     Kernel()
-      : value_(0.0f) { }
+      : value_({1}) { }
 
-    Kernel(float value)
+    Kernel(NDArray value)
       : value_(value) { }
     
     virtual ~Kernel() { }
     virtual void forward() { }
 
-    virtual float value() const {
+    virtual const NDArray& value() const {
       return value_;
     }
 
-    virtual float gradient(const std::shared_ptr<Node>& node) {
-      return 0.0f;
+    virtual NDArray gradient(const std::shared_ptr<Node>& node) {
+      return NDArray({1});
     }
 
     virtual std::string to_string() const {
@@ -33,13 +35,13 @@ class Kernel {
     }
 
   protected:
-    float value_;
+    NDArray value_;
 };
 
 
 class Value : public Kernel {
   public:
-    Value(float value)
+    Value(NDArray value)
       : Kernel(value) { }
 
     virtual std::string to_string() const override;
@@ -50,7 +52,7 @@ class Add : public Kernel {
     Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
     
     virtual void forward() override;
-    virtual float gradient(const std::shared_ptr<Node>& node) override;
+    virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
     virtual std::string to_string() const override;
 
   private:
@@ -64,7 +66,20 @@ class Mul : public Kernel {
     Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
 
     virtual void forward() override;
-    float gradient(const std::shared_ptr<Node>& node) override;
+    virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
+    virtual std::string to_string() const override;
+
+  private:
+    std::shared_ptr<Node> a_;
+    std::shared_ptr<Node> b_;
+};
+
+
+class Dot : public Kernel {
+  public:
+    Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    virtual void forward() override;
+    virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
     virtual std::string to_string() const override;
 
   private:

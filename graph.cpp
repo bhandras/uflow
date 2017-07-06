@@ -12,11 +12,11 @@ void Node::eval() {
   kernel_->forward();
 }
 
-float Node::value() const {
+const NDArray& Node::value() const {
   return kernel_->value();
 }
 
-float Node::gradient(const Node::ptr& node) {
+NDArray Node::gradient(const Node::ptr& node) {
   return kernel_->gradient(node);
 }
 
@@ -24,7 +24,7 @@ std::string Node::to_string() const {
   return kernel_->to_string();
 }
 
-Node::ptr Graph::var(float value) {
+Node::ptr Graph::var(NDArray value) {
   auto var_node = std::make_shared<Node>(std::make_unique<Value>(value));
   return var_node;
 }
@@ -43,6 +43,14 @@ Node::ptr Graph::mul(Node::ptr a, Node::ptr b) {
   adj_[b].push_back(mul_node);
 
   return mul_node;
+}
+
+Node::ptr Graph::dot(Node::ptr a, Node::ptr b) {
+  auto dot_node = std::make_shared<Node>(std::make_unique<Dot>(a, b));
+  adj_[a].push_back(dot_node);
+  adj_[b].push_back(dot_node);
+
+  return dot_node;
 }
 
 void Graph::eval() {
@@ -93,7 +101,7 @@ void Graph::eval() {
   }
 
   if (count != adj_.size()) {
-    std::cout << "circle" << std::endl;
+    throw RuntimeError("graph contains cycle");
   }
 
 
@@ -101,7 +109,7 @@ void Graph::eval() {
     node->eval();
   }
 
-  std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, float>> work_gradients;
+  std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, NDArray>> work_gradients;
   gradients_.clear();
   
   for (int i = top_order.size() - 1; i >= 0; --i) {
@@ -112,31 +120,42 @@ void Graph::eval() {
     std::cout << "node: " << node->to_string() << std::endl;
     
     if (suc_nodes.empty()) {
-      // result (last) node
-      float grad_suc = 1.0f;
-
+      // result (last) node => grad_suc = 1
       for (auto& p : pre_nodes) {
-        std::cout << "grad_pre: " << p->to_string() << "; " << node->gradient(p) << std::endl;
+        std::cout << "grad_pre: " << p->to_string() << "; " << node->gradient(p).to_string() << std::endl;
 
-        work_gradients[node][p] += grad_suc * node->gradient(p);
+        if (work_gradients[node].count(p) == 0) {
+          work_gradients[node][p] = node->gradient(p);
+        } else {
+          work_gradients[node][p].add_(node->gradient(p));
+        }
       }
-    } else { 
+    } else {
       for (auto& s : suc_nodes) {
-        float grad_suc = work_gradients[s][node];
+        auto grad_suc = work_gradients[s][node];
         
-        std::cout << "grad_suc: " << s->to_string() << ", " << grad_suc << std::endl;
+        std::cout << "grad_suc: " << s->to_string() << ", " << grad_suc.to_string() << std::endl;
 
         if (!pre_nodes.empty()) {
           for (auto& n_pre : pre_nodes) {
             
             std::cout << "grad_pre: " << n_pre->to_string() << "; " 
-              << node->gradient(n_pre) << std::endl;
-            
-            work_gradients[node][n_pre] += grad_suc * node->gradient(n_pre);
+              << node->gradient(n_pre).to_string() << std::endl;
+           
+            auto g = grad_suc.mul(node->gradient(n_pre));
+            if (work_gradients[node].count(n_pre) == 0) {
+              work_gradients[node][n_pre] = g;
+            } else {
+              work_gradients[node][n_pre].add_(g);
+            }
           }
         } else {
           // leaf node
-          gradients_[top_order[i]] += grad_suc;
+          if (gradients_.count(node) == 0) {
+            gradients_[node] = grad_suc;
+          } else {
+            gradients_[node].add_(grad_suc);
+          }
         }
       }
     }
@@ -145,12 +164,12 @@ void Graph::eval() {
   }
 }
 
-float Graph::gradient(const Node::ptr& node) const {
+NDArray Graph::gradient(const Node::ptr& node) const {
   auto it = gradients_.find(node);
   if (it != gradients_.end()) {
     return it->second;
   }
-
-  return 0.0f;
+  // TODO
+  return NDArray({1}); // 0.0f;
 }
 

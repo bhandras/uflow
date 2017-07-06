@@ -7,6 +7,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include "ndarray.h"
+
 class Kernel;
 
 class Node {
@@ -17,8 +19,8 @@ class Node {
     virtual ~Node() {}
     
     void eval();
-    float value() const;
-    float gradient(const Node::ptr& node);
+    const NDArray& value() const;
+    NDArray gradient(const Node::ptr& node);
     std::string to_string() const;
 
   protected:
@@ -28,15 +30,16 @@ class Node {
 
 class Graph {
   public:
-    Node::ptr var(float value);
+    Node::ptr var(NDArray value);
     Node::ptr add(Node::ptr a, Node::ptr b);
     Node::ptr mul(Node::ptr a, Node::ptr b);
+    Node::ptr dot(Node::ptr a, Node::ptr b);
     void eval();
-    float gradient(const Node::ptr& node) const;
+    NDArray gradient(const Node::ptr& node) const;
 
   protected:
     std::unordered_map<Node::ptr, std::list<Node::ptr>> adj_;
-    std::unordered_map<Node::ptr, float> gradients_;
+    std::unordered_map<Node::ptr, NDArray> gradients_;
 };
 
 

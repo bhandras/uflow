@@ -28,7 +28,6 @@ int main() {
   
   arr = NDArray({2, 3, 3, 4});
   std::cout << "---" << std::endl << arr.to_string() << std::endl; 
-  */
 
   NDArray a;
   a.arange(18);
@@ -48,5 +47,33 @@ int main() {
   b.arange(4);
   std::cout << "b=" << b.to_string() << std::endl;
   std::cout << "(a dot b)="<< a.dot(b).to_string() << std::endl;
+  */
+
+  auto x1 = g.var(NDArray({3}, {2}));
+  auto x2 = g.var(NDArray({3}, {3}));
+  auto x3 = g.var(NDArray({3}, {4}));
+  std::cout << "x1=" << x1->value().to_string() << std::endl;
+  std::cout << "x2=" << x2->value().to_string() << std::endl;
+  std::cout << "x3=" << x3->value().to_string() << std::endl;
+  auto m = g.add(x1, x2);
+  auto z = g.dot(m, x3);
+  g.eval();
+
+  std::cout << "m=" << m->value().to_string() << std::endl;
+  std::cout << "z=" << z->value().to_string() << std::endl;
+  std::cout << "grad x1=" << g.gradient(x1).to_string() << std::endl;
+  std::cout << "grad x2=" << g.gradient(x2).to_string() << std::endl;
+  std::cout << "grad x3=" << g.gradient(x3).to_string() << std::endl;
+  
+/* 
+  NDArray xx({2}, {2, 3});
+  std::cout << xx.to_string() << std::endl; 
+  xx.unsqueeze(1);
+  std::cout << xx.to_string() << std::endl; 
+  
+  xx = NDArray();
+  xx.unsqueeze(0);
+  std::cout << xx.to_string() << std::endl;
+  */
   return 0;
 }
