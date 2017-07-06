@@ -10,8 +10,27 @@ class NDArray {
     NDArray() 
       : size_(0) { }
 
-    NDArray(const std::vector<size_t>& shape)
+    NDArray(const std::vector<size_t>& shape,
+        const std::vector<float>& init=std::vector<float>())
     : shape_(shape) {
+      update_shape();
+      if (!init.empty()) {
+        for (size_t i = 0; i < size_; ++i) {
+          arr_[i] = init[i % init.size()];  
+        }
+      }
+    }
+
+    void unsqueeze(size_t dim) {
+      if ((shape_.empty() && dim != 0)
+          || dim > shape_.size()) {
+        throw RuntimeError("cannot unsqueeze "
+            + str(shape_)
+            + " at "
+            + std::to_string(dim));
+      }
+
+      shape_.insert(shape_.begin() + dim, 1);
       update_shape();
     }
 
@@ -88,6 +107,9 @@ class NDArray {
     }
 
     std::string to_string() const {
+      if (shape_.empty()) {
+        return "[]";
+      }
       std::stringstream ss;
       int pos = 0;
       to_string_helper(ss, 0, pos, 1);
@@ -95,7 +117,7 @@ class NDArray {
     }
 
     NDArray& operator=(const NDArray& other) = default;
-
+    
     NDArray add(const NDArray& other) const {
       NDArray tmp = *this;
       return tmp.add_(other);
