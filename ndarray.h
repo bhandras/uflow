@@ -160,28 +160,60 @@ class NDArray {
       }
 
       size_t ndim = shape_.size();
-      if (ndim > 1 && shape_[ndim - 1] != other.shape_[ndim - 2]) {
+      if (ndim >= 1 && shape_[ndim - 1] != other.shape_[ndim - 1]) {
         throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
       }
 
-      if (ndim > 2) {
-        for (size_t i = 0; i < ndim - 2; ++i) {
+      if (ndim > 1) {
+        for (size_t i = 0; i < ndim - 1; ++i) {
           if (shape_[i] != other.shape_[i]) {
             throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
           }
         }
       }
 
-      if (ndim == 1) {
-        NDArray res({1});
+      std::vector<size_t> res_shape(shape_);
+      res_shape[ndim - 1] = 1; 
+      NDArray res(res_shape);
 
-        for (size_t i = 0; i < shape_[ndim - 1]; ++i) {
-          res.arr_[0] += arr_[i] * other.arr_[i];
+      size_t count = 1;
+      for (size_t i = 0; i < ndim - 1; ++i) {
+        count *= shape_[i];
+      }
+
+      size_t stride = shape_[ndim - 1];
+      for (int c = 0; c < count; ++c) {
+        size_t offset = c * stride;
+        auto& ai_dot_bi = res.arr_[offset];
+        auto ai = &res.arr_[offset];
+        auto bi = &other.arr_[offset];
+
+        for (size_t j = 0; j < shape_[ndim - 1]; ++j) {
+          ai_dot_bi += ai[j] * bi[j];
         }
-
-        return res;
       } 
       
+      return res;
+    }
+
+    NDArray mm(const NDArray& other) const {
+      if (shape_.size() != other.shape_.size()) {
+        throw NDArray::ex_incompatible_shapes("mm", shape_, other.shape_);
+      }
+
+      size_t ndim = shape_.size();
+      if (ndim >= 2 && shape_[ndim - 1] != other.shape_[ndim - 2]) {
+        throw NDArray::ex_incompatible_shapes("mm", shape_, other.shape_);
+      }
+
+      if (ndim > 2) {
+        for (size_t i = 0; i < ndim - 2; ++i) {
+          if (shape_[i] != other.shape_[i]) {
+            throw NDArray::ex_incompatible_shapes("mm", shape_, other.shape_);
+          }
+        }
+      }
+
       // matrix mul
       std::vector<size_t> res_shape(shape_);
       res_shape[ndim - 1] = other.shape_[ndim - 1]; 
