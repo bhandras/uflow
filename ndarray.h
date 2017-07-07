@@ -155,40 +155,65 @@ class NDArray {
     }
 
     NDArray dot(const NDArray& other) const {
+      // shape size
       if (shape_.size() != other.shape_.size()) {
         throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
       }
 
+      // last dim
       size_t ndim = shape_.size();
       if (ndim >= 1 && shape_[ndim - 1] != other.shape_[ndim - 1]) {
         throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
       }
 
+      // remaining
       if (ndim > 1) {
-        for (size_t i = 0; i < ndim - 1; ++i) {
+        bool good = true;
+        for (size_t i = 0; good && (i < ndim - 1); ++i) {
           if (shape_[i] != other.shape_[i]) {
-            throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
+            good = false;
           }
+        }
+
+        if (good && (shape_[ndim - 1] != 1 && shape_[ndim - 2] != 1)) {
+          good = false;
+        }
+
+        if (!good) {
+          throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
         }
       }
 
-      std::vector<size_t> res_shape(shape_);
-      res_shape[ndim - 1] = 1; 
+      size_t stride = 0;
+      size_t res_shape_size = 0;
+
+      if (shape_[ndim - 1] == 1 || shape_[ndim - 2] == 1) {
+        stride = shape_[ndim - 1] * shape_[ndim - 2];
+        res_shape_size = shape_.size() - 1;
+      } else {
+        stride = shape_[ndim - 1];
+        res_shape_size = shape_.size();
+      }
+
+      std::vector<size_t> res_shape(res_shape_size);
+      for (size_t i = 0; i < res_shape_size - 1; ++i) {
+        res_shape[i] = shape_[i];
+      }
+      res_shape[res_shape_size - 1] = 1;
       NDArray res(res_shape);
 
       size_t count = 1;
-      for (size_t i = 0; i < ndim - 1; ++i) {
-        count *= shape_[i];
+      for (size_t i = 0; i < res_shape_size - 1; ++i) {
+        count *= res_shape[i];
       }
-
-      size_t stride = shape_[ndim - 1];
+      
       for (int c = 0; c < count; ++c) {
         size_t offset = c * stride;
-        auto& ai_dot_bi = res.arr_[offset];
-        auto ai = &res.arr_[offset];
+        auto& ai_dot_bi = res.arr_[c];
+        auto ai = &arr_[offset];
         auto bi = &other.arr_[offset];
 
-        for (size_t j = 0; j < shape_[ndim - 1]; ++j) {
+        for (size_t j = 0; j < stride; ++j) {
           ai_dot_bi += ai[j] * bi[j];
         }
       } 
