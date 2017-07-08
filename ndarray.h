@@ -2,6 +2,7 @@
 #define _ndarray_h_
 
 #include <vector>
+#include <utility>
 #include "util.h"
 #include "exception.h"
 
@@ -120,6 +121,41 @@ class NDArray {
 
     NDArray& operator=(const NDArray& other) = default;
     
+    NDArray transpose() const {
+      if (shape_.size() < 2) {
+        throw RuntimeError("cannot transpose array");
+      }
+
+      NDArray res(shape_);
+
+      size_t i1 = res.shape_.size() - 2;
+      size_t i2 = res.shape_.size() - 1;
+      size_t d1 = res.shape_[i1];
+      size_t d2 = res.shape_[i2];
+      
+      size_t count = 1;
+      for (size_t i = 0; i < shape_.size() - 2; ++i) {
+        count *= shape_[i];
+      }
+      
+      size_t stride = d1 * d2;
+
+      for (size_t c = 0; c < count; ++c) {
+        size_t offset = c * stride;
+        auto oa = &arr_[offset];
+        auto ra = &res.arr_[offset];
+        
+        for (size_t i = 0; i < d1; ++i) {
+          for (size_t j = 0; j < d2; ++j) {
+            ra[j * d1 + i] = oa[i * d2 + j];
+          }
+        }
+      }
+
+      std::swap(res.shape_[i1], res.shape_[i2]);
+      return res;
+    }
+
     NDArray add(const NDArray& other) const {
       NDArray tmp = *this;
       return tmp.add_(other);
