@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <utility>
+#include <algorithm>
 #include <iostream>
 #include "util.h"
 #include "exception.h"
@@ -12,15 +13,14 @@ std::ostream& operator<<(std::ostream& os, const NDArray& arr);
 
 class NDArray {
   public:
-    NDArray() 
-      : size_(0) { }
+    NDArray() {} 
 
     NDArray(const std::vector<size_t>& shape,
         const std::vector<float>& init=std::vector<float>())
     : shape_(shape) {
       update_shape();
       if (!init.empty()) {
-        for (size_t i = 0; i < size_; ++i) {
+        for (size_t i = 0; i < arr_.size(); ++i) {
           arr_[i] = init[i % init.size()];  
         }
       }
@@ -43,7 +43,7 @@ class NDArray {
       shape_ = std::vector<size_t>{n};
       update_shape();
 
-      for (size_t i = 0; i < size_; ++i) {
+      for (size_t i = 0; i < arr_.size(); ++i) {
         arr_[i] = 1.0f;
       }
     }
@@ -52,22 +52,23 @@ class NDArray {
       shape_ = std::vector<size_t>{n};
       update_shape();
 
-      for (size_t i = 0; i < size_; ++i) {
+      for (size_t i = 0; i < arr_.size(); ++i) {
         arr_[i] = i * step;
       }
     }
 
     void update_shape() {
-      size_ = 1;
+      size_t size = 1;
       for (auto dim : shape_) {
-        size_ *= dim;
+        size *= dim;
       }
 
+      arr_.resize(size, 0.0f); 
+      
       stride_ = std::vector<size_t>(shape_.size(), 1);
       for (int i = shape_.size() - 2; i >= 0; --i) {
         stride_[i] = shape_[i + 1] * stride_[i + 1];
       }
-      arr_.resize(size_, 0.0f); 
     }
 
     const std::vector<size_t>& shape() const {
@@ -80,7 +81,7 @@ class NDArray {
         new_size *= dim;
       }
 
-      if (new_size != size_) {
+      if (new_size != arr_.size()) {
         throw NDArray::ex_incompatible_shapes("reshape", shape_, shape);
       }
 
@@ -182,74 +183,68 @@ class NDArray {
 
       size_t s1 = shape1.size();
       size_t s2 = shape2.size();
-      std::vector<size_t> common_shape(std::max(s1, s2));
+      size_t sc = std::max(s1, s2);
+      std::vector<size_t> common_shape(sc);
       
       for (size_t i = 0; i < common_shape.size(); ++i) {
-        size_t d1 = i < shape1.size() ? shape1[i] : 1;
-        size_t d2 = i < shape2.size() ? shape2[i] : 1;
-
+        size_t d1 = i < s1 ? shape1[s1 - i - 1] : 1;
+        size_t d2 = i < s2 ? shape2[s2 - i - 1] : 1;
         if (std::min(d1, d2) != 1 && d1 != d2) {
           return std::vector<size_t>();
         }
-
-        common_shape[i] = std::max(d1, d2);
+        common_shape[sc - i - 1] = std::max(d1, d2);
       }
       
       return common_shape;
     }
 
-    NDArray expand(const std::vector<size_t>& new_shape) const {
-      NDArray res(new_shape);
-      
+    std::vector<size_t> strides(const NDArray& other) const {
+      // get broadcast strides for broadcast shape
       auto& shape_s = shape_;
-      auto& shape_d = new_shape;
-      auto& arr_s = arr_;
-      auto& arr_d = res.arr_;
-
-      size_t pos_s = 0;
-      size_t pos_d = 0;
-
-      size_t ss = shape_s.size();
-      size_t sd = shape_d.size();
-      size_t ds = shape_s[ss - 1];
-      size_t dd = shape_d[sd - 1];
+      auto shape_d = get_common_shape(other);
       
-      if (ds == 1 && dd == 1) {
-        arr_d[0] = arr_s[0];
-        pos_s = 1;
-        pos_d = 1;
-      } else if (ds == dd) {
-        std::copy(&arr_s[0], &arr_s[ds], &arr_d[0]);
-        pos_s = ds;
-        pos_d = dd;
-      } else {
-        // assert(d1 == 1)
-        std::fill(&arr_d[0], &arr_d[dd], arr_s[0]);
-        pos_s = 1; 
-        pos_d = dd;
+      auto& stride_s = stride_;
+      std::vector<size_t> stride_d(shape_d.size(), 0);
+
+      size_t offs = shape_d.size() - shape_s.size();
+      for (size_t i = shape_s.size(); i > 0; --i) {
+        if (shape_d[i + offs - 1] == shape_s[i - 1]) {
+          stride_d[i + offs - 1] = stride_s[i - 1];
+        }
       }
 
-      for (size_t i = 1; i < sd; ++i) {
-        ds = i < ss ?
-             shape_s[ss - i - 1] : 1;
-        dd = shape_d[sd - i - 1];
-        
-        if (ds == 1 && dd == 1) continue;
-        
-        if (ds == dd) {
-          size_t stride = pos_s;
-          for (size_t j = 0; j < (ds - 1); ++j) {
-            std::copy(&arr_s[pos_s], &arr_s[pos_s + stride], &arr_d[pos_d]);
-            pos_s += stride;
-            pos_d += stride;
-          }
-        } else {
-          size_t stride = pos_d;
-          for (size_t j = 0; j < (dd - ds); ++j) {
-            std::copy(&arr_d[0], &arr_d[stride], &arr_d[pos_d]);
-            pos_d += stride;
-          }
+      return stride_d;
+    }
+
+
+    NDArray expand_as(const NDArray& other) const {
+      return expand(other.shape());
+    }
+
+    NDArray expand(const std::vector<size_t>& new_shape) const {
+      NDArray res(new_shape);
+      auto strides_d = strides(res);
+      
+      std::vector<size_t> nonzero_strides;
+      for (auto s : strides_d) {
+        if (s != 0) {
+          nonzero_strides.push_back(s);
         }
+      }
+
+      for (size_t pos = 0; pos < res.arr_.size(); ++pos) {
+        size_t inc = 0;
+        size_t tmp = pos;
+        for (size_t i = new_shape.size(); i > 0; --i) {
+          size_t idx = i - 1;
+          auto n = tmp % new_shape[idx];
+          inc += n * strides_d[idx];
+          tmp /= new_shape[idx];
+        }
+        if (tmp > 0) {
+          inc = new_shape[0] * nonzero_strides[0];
+        }
+        res.arr_[pos] = arr_[inc];
       }
 
       return res;
@@ -274,8 +269,6 @@ class NDArray {
         }
       }
       
-      std::cout << "this=" << (*this) << std::endl;
-      std::cout << "other=" << other << std::endl;
       for (size_t i = 0; i < arr_.size(); ++i) {
         arr_[i] *= other.arr_[i];
       }
@@ -423,10 +416,9 @@ class NDArray {
     }
 
   private:
-    size_t size_;
+    std::vector<float> arr_;
     std::vector<size_t> shape_;
     std::vector<size_t> stride_;
-    std::vector<float> arr_;
 };
 
 
