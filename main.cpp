@@ -36,17 +36,20 @@ int main() {
   std::cout << "(a dot b)="<< a.dot(b) << std::endl;
   */
 
+  /*
   auto zz = NDArray({2, 3}, {1, 2, 3, 4, 5, 6});
-  auto qq = NDArray({2, 1}, {2, 1});
+  auto qq = NDArray({2, 1}, {1, 2});
+  std::cout << "QQ orig=" << qq << std::endl;
   std::cout << "QQ=" << qq.expand({2, 3}) << std::endl;
   std::cout << "zz=" << zz << std::endl;
-  //std::cout << "b0=" << zz.broadcast({2, 3}) << std::endl;
+  std::cout << "b0=" << zz.expand({2, 3}) << std::endl;
   std::cout << "b1=" << zz.expand({2, 2, 3}) << std::endl;
   std::cout << "b2=" << zz.expand({1, 2, 3}) << std::endl;
   std::cout << "b4=" << zz.expand({3, 1, 2, 2, 3}) << std::endl;
   std::cout << "zz mul qq=" << zz.mul(qq) << std::endl;
   std::cout << "qq mul zz=" << qq.mul(zz) << std::endl;
-  /*
+  */
+  
   auto x1 = g.var(NDArray({3,1}, {2}));
   auto x2 = g.var(NDArray({3,1}, {3}));
   auto x3 = g.var(NDArray({3,1}, {4}));
@@ -54,6 +57,14 @@ int main() {
   std::cout << "x2=" << x2 << std::endl;
   std::cout << "x3=" << x3 << std::endl;
 
+  auto alma = g.dot(g.add(x1, x2), x3);
+  g.eval();
+  std::cout << "alma=" << alma << std::endl;
+  std::cout << "grad x1=" << g.gradient(x1) << std::endl;
+  std::cout << "grad x2=" << g.gradient(x2) << std::endl;
+  std::cout << "grad x3=" << g.gradient(x3) << std::endl;
+ 
+/*
   auto w = NDArray();
   w.arange(9);
   w.reshape({3, 3});

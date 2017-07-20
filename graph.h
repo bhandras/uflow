@@ -18,10 +18,9 @@ class Node {
 
     Node(std::unique_ptr<Kernel> kernel);
     virtual ~Node() {}
-    
+    Kernel& kernel() { return *kernel_.get(); } 
     void eval();
     const NDArray& value() const;
-    NDArray gradient(const Node::ptr& node);
     std::string str() const;
 
   protected:
@@ -34,6 +33,7 @@ class Graph {
     Node::ptr add(Node::ptr a, Node::ptr b);
     Node::ptr mul(Node::ptr a, Node::ptr b);
     Node::ptr dot(Node::ptr a, Node::ptr b);
+    Node::ptr mm(Node::ptr a, Node::ptr b);
     void eval();
     NDArray gradient(const Node::ptr& node) const;
 

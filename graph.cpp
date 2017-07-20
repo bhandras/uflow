@@ -17,10 +17,6 @@ const NDArray& Node::value() const {
   return kernel_->value();
 }
 
-NDArray Node::gradient(const Node::ptr& node) {
-  return kernel_->gradient(node);
-}
-
 std::string Node::str() const {
   return kernel_->str();
 }
@@ -52,6 +48,14 @@ Node::ptr Graph::dot(Node::ptr a, Node::ptr b) {
   adj_[b].push_back(dot_node);
 
   return dot_node;
+}
+
+Node::ptr Graph::mm(Node::ptr a, Node::ptr b) {
+  auto mm_node = std::make_shared<Node>(std::make_unique<MatMul>(a, b));
+  adj_[a].push_back(mm_node);
+  adj_[b].push_back(mm_node);
+
+  return mm_node;
 }
 
 void Graph::eval() {
@@ -107,66 +111,36 @@ void Graph::eval() {
 
 
   for (const auto& node : top_order) {  
-    node->eval();
+    node->kernel().forward();
   }
+
+  std::cout << "eval res: " <<top_order[top_order.size() - 1]->value() << std::endl;
+
+  std::cout << std::endl << "backprop" << std::endl;
 
   std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, NDArray>> work_gradients;
   gradients_.clear();
-  
+  auto dummy = std::list<Node::ptr>{var(NDArray({1}, {1}))};
+
   for (int i = top_order.size() - 1; i >= 0; --i) {
     auto& node = top_order[i];
-    auto& suc_nodes = adj_[top_order[i]];
+    auto& suc_nodes = adj_[top_order[i]].empty() ? dummy : adj_[top_order[i]];
     auto& pre_nodes = pre[top_order[i]];
+    std::cout << "i: " << i << " - " << (top_order.size() - 1) << std::endl;
+    node->kernel().backward(suc_nodes, work_gradients[node]);
 
-    
-    if (suc_nodes.empty()) {
-      std::cout << "result node: " << node << std::endl;
-      // result (last) node => grad_suc = 1
-      for (auto& n_pre : pre_nodes) {
-
-        // grad of 'node' w.r.t 'n_pre'
-        auto grad_pre = node->gradient(n_pre);
-        std::cout << "grad_pre: " << n_pre << "; " << grad_pre << std::endl;
-
-        if (work_gradients[node].count(n_pre) == 0) {
-          work_gradients[node][n_pre] = grad_pre;
-        } else {
-          work_gradients[node][n_pre].add_(grad_pre);
-        }
-      }
-    } else {
-      std::cout << "node: " << node << std::endl;
+    if (pre_nodes.empty()) {
       for (auto& n_suc : suc_nodes) {
         const auto& grad_suc = work_gradients[n_suc][node];
-        
-        std::cout << "grad_suc: " << n_suc << "; " << grad_suc << std::endl;
 
-        if (!pre_nodes.empty()) {
-          for (auto& n_pre : pre_nodes) {
-           
-            // grad of 'node' w.r.t 'n_pre'
-            auto grad_pre = node->gradient(n_pre);
-            std::cout << "grad_pre: " << n_pre << "; " << grad_pre << std::endl; 
-            auto grad = grad_suc.mul(grad_pre);
-
-            if (work_gradients[node].count(n_pre) == 0) {
-              work_gradients[node][n_pre] = grad;
-            } else {
-              work_gradients[node][n_pre].add_(grad);
-            }
-          }
+        // leaf node
+        if (gradients_.count(node) == 0) {
+          gradients_[node] = grad_suc;
         } else {
-          // leaf node
-          if (gradients_.count(node) == 0) {
-            gradients_[node] = grad_suc;
-          } else {
-            gradients_[node].add_(grad_suc);
-          }
+          gradients_[node].add_(grad_suc);
         }
-      }
+      }      
     }
-    
-    std::cout << "---" << std::endl;
   }
 }
 

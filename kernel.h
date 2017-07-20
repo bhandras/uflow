@@ -8,8 +8,7 @@
 #include <unordered_map>
 
 #include "ndarray.h"
-
-class Node;
+#include "graph.h"
 
 class Kernel {
   public:
@@ -26,9 +25,8 @@ class Kernel {
       return value_;
     }
 
-    virtual NDArray gradient(const std::shared_ptr<Node>& node) {
-      return NDArray({1});
-    }
+    virtual void backward(const std::list<Node::ptr>& outputs,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const { }
 
     virtual std::string str() const {
       return std::string();
@@ -52,7 +50,9 @@ class Add : public Kernel {
     Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
     
     virtual void forward() override;
-    virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
+    virtual void backward(const std::list<Node::ptr>& outputs,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+
     virtual std::string str() const override;
 
   private:
@@ -66,7 +66,9 @@ class Mul : public Kernel {
     Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
 
     virtual void forward() override;
-    virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
+    virtual void backward(const std::list<Node::ptr>& outputs,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+
     virtual std::string str() const override;
 
   private:
@@ -80,13 +82,32 @@ class Dot : public Kernel {
     Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
     
     virtual void forward() override;
-    virtual NDArray gradient(const std::shared_ptr<Node>& node) override;
+    virtual void backward(const std::list<Node::ptr>& outputs,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+
     virtual std::string str() const override;
 
   private:
     std::shared_ptr<Node> a_;
     std::shared_ptr<Node> b_;
 };
+
+
+class MatMul : public Kernel {
+  public:
+    MatMul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    
+    virtual void forward() override;
+    virtual void backward(const std::list<Node::ptr>& outputs,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+
+    virtual std::string str() const override;
+
+  private:
+    std::shared_ptr<Node> a_;
+    std::shared_ptr<Node> b_;
+};
+
 
 
 #endif // _kernel_h_

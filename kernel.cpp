@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include "kernel.h"
 #include "graph.h"
@@ -14,11 +15,15 @@ void Add::forward() {
   value_ = a_->value().add(b_->value());
 }
 
-NDArray Add::gradient(const std::shared_ptr<Node>& node)  {
-  NDArray zeros(a_->value().shape(), {0});
-  if (node != a_ && node != b_) return zeros;
-  NDArray ones(a_->value().shape(), {1});
-  return ones;
+void Add::backward(const std::list<Node::ptr>& outputs,
+    std::unordered_map<Node::ptr, NDArray>& gradients) const {
+  gradients[a_] = NDArray(a_->value().shape());
+  
+  for (auto& output : outputs) {
+    gradients[a_].add_(output->value());
+  }
+
+  gradients[b_] = gradients[a_];
 }
 
 std::string Add::str() const {
@@ -32,11 +37,15 @@ void Mul::forward() {
   value_ = a_->value().mul(b_->value());
 }
 
-NDArray Mul::gradient(const std::shared_ptr<Node>& node) {
-  if (node == a_) return b_->value();
-  if (node == b_) return a_->value();
-  NDArray zero(a_->value().shape(), {0});
-  return zero;
+void Mul::backward(const std::list<Node::ptr>& outputs,
+    std::unordered_map<Node::ptr, NDArray>& gradients) const {
+  gradients[a_] = NDArray(a_->value().shape());
+  gradients[b_] = NDArray(a_->value().shape());
+  
+  for (auto& output : outputs) {
+    gradients[a_].add_(b_->value().mul(output->value()));
+    gradients[b_].add_(a_->value().mul(output->value()));
+  }
 }
 
 std::string Mul::str() const {
@@ -50,15 +59,44 @@ void Dot::forward() {
   value_ = a_->value().dot(b_->value());
 }
 
-NDArray Dot::gradient(const std::shared_ptr<Node>& node) {
-  if (node == a_) return b_->value();
-  if (node == b_) return a_->value();
-  NDArray zero(a_->value().shape(), {0});
-  return zero;
+void Dot::backward(const std::list<Node::ptr>& outputs,
+    std::unordered_map<Node::ptr, NDArray>& gradients) const {
+  std::cout << "dot" << std::endl;
+  gradients[a_] = NDArray(a_->value().shape());
+  gradients[b_] = NDArray(a_->value().shape());
+  
+  for (auto& output : outputs) {
+    gradients[a_].add_(output->value().dot(b_->value()));
+    gradients[b_].add_(a_->value().dot(output->value()));
+  }
 }
 
 std::string Dot::str() const {
   return "(" + a_->value().str() + " dot " + b_->value().str() + ")";
 }
 
+MatMul::MatMul(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
+  : a_(a), b_(b) { }
+
+void MatMul::forward() {
+  value_ = a_->value().mm(b_->value());
+}
+
+void MatMul::backward(const std::list<Node::ptr>& outputs,
+    std::unordered_map<Node::ptr, NDArray>& gradients) const {
+  std::cout << "matmul" << std::endl;
+  gradients[a_] = NDArray(a_->value().shape());
+  gradients[b_] = NDArray(a_->value().shape());
+  auto a_t = a_->value().transpose();
+  auto b_t = b_->value().transpose();
+  
+  for (auto& output : outputs) {
+    gradients[a_].add_(output->value().mm(b_t));
+    gradients[b_].add_(a_t.mm(output->value()));
+  }
+}
+
+std::string MatMul::str() const {
+  return "(" + a_->value().str() + " mm " + b_->value().str() + ")";
+}
 
