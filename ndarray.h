@@ -16,9 +16,10 @@ class NDArray {
     NDArray() {} 
 
     NDArray(const std::vector<size_t>& shape,
-        const std::vector<float>& init=std::vector<float>())
-    : shape_(shape) {
+            const std::vector<float>& init = std::vector<float>())
+      : shape_(shape) {
       update_shape();
+      
       if (!init.empty()) {
         for (size_t i = 0; i < arr_.size(); ++i) {
           arr_[i] = init[i % init.size()];  
@@ -43,8 +44,8 @@ class NDArray {
       shape_ = std::vector<size_t>{n};
       update_shape();
 
-      for (size_t i = 0; i < arr_.size(); ++i) {
-        arr_[i] = 1.0f;
+      for (auto& val : arr_) {
+        val = 1.0f;
       }
     }
 
@@ -65,9 +66,9 @@ class NDArray {
 
       arr_.resize(size, 0.0f); 
       
-      stride_ = std::vector<size_t>(shape_.size(), 1);
+      strides_ = std::vector<size_t>(shape_.size(), 1);
       for (int i = shape_.size() - 2; i >= 0; --i) {
-        stride_[i] = shape_[i + 1] * stride_[i + 1];
+        strides_[i] = shape_[i + 1] * strides_[i + 1];
       }
     }
 
@@ -160,22 +161,6 @@ class NDArray {
       return res;
     }
 
-    NDArray add(const NDArray& other) const {
-      NDArray tmp = *this;
-      return tmp.add_(other);
-    }
-
-    NDArray& add_(const NDArray& other) {
-      if (shape_ != other.shape_) {
-        throw NDArray::ex_incompatible_shapes("add", shape_, other.shape_);
-      }
-
-      for (size_t i = 0; i < arr_.size(); ++i) {
-        arr_[i] += other.arr_[i];
-      }
-
-      return *this;
-    }
 
     std::vector<size_t> get_common_shape(const NDArray& other) const {
       auto& shape1 = shape_;
@@ -198,22 +183,21 @@ class NDArray {
       return common_shape;
     }
 
-    std::vector<size_t> strides(const NDArray& other) const {
+    std::vector<size_t> strides(const std::vector<size_t>& shape_d) const {
       // get broadcast strides for broadcast shape
       auto& shape_s = shape_;
-      auto shape_d = get_common_shape(other);
-      
-      auto& stride_s = stride_;
-      std::vector<size_t> stride_d(shape_d.size(), 0);
+      auto& strides_s = strides_;
+      std::vector<size_t> strides_d(shape_d.size(), 0);
 
       size_t offs = shape_d.size() - shape_s.size();
       for (size_t i = shape_s.size(); i > 0; --i) {
-        if (shape_d[i + offs - 1] == shape_s[i - 1]) {
-          stride_d[i + offs - 1] = stride_s[i - 1];
+        size_t idx = i - 1;
+        if (shape_d[idx + offs] == shape_s[idx]) {
+          strides_d[idx + offs] = strides_s[idx];
         }
       }
 
-      return stride_d;
+      return strides_d;
     }
 
 
@@ -222,8 +206,12 @@ class NDArray {
     }
 
     NDArray expand(const std::vector<size_t>& new_shape) const {
+      if (shape_ == new_shape) {
+        return *this;
+      }
+
       NDArray res(new_shape);
-      auto strides_d = strides(res);
+      auto strides_d = strides(new_shape);
       
       std::vector<size_t> nonzero_strides;
       for (auto s : strides_d) {
@@ -237,7 +225,7 @@ class NDArray {
         size_t tmp = pos;
         for (size_t i = new_shape.size(); i > 0; --i) {
           size_t idx = i - 1;
-          auto n = tmp % new_shape[idx];
+          size_t n = tmp % new_shape[idx];
           inc += n * strides_d[idx];
           tmp /= new_shape[idx];
         }
@@ -248,6 +236,32 @@ class NDArray {
       }
 
       return res;
+    }
+
+    NDArray add(const NDArray& other) const {
+      NDArray tmp = *this;
+      return tmp.add_(other);
+    }
+
+    NDArray& add_(const NDArray& other) {
+      if (shape_ != other.shape_) {
+        auto common_shape = get_common_shape(other);
+        if (common_shape.empty()) {
+          throw NDArray::ex_incompatible_shapes("add", shape_, other.shape_);
+        }
+
+        if (common_shape != shape_) {
+          *this = expand(common_shape);
+        }
+
+        return add_(other.expand(common_shape));
+      }
+
+      for (size_t i = 0; i < arr_.size(); ++i) {
+        arr_[i] += other.arr_[i];
+      }
+
+      return *this;
     }
 
     NDArray mul(const NDArray& other) const {
@@ -264,9 +278,9 @@ class NDArray {
 
         if (common_shape != shape_) {
           *this = expand(common_shape);
-        } else {
-          return mul_(other.expand(common_shape)); 
         }
+
+        return mul_(other.expand(common_shape));
       }
       
       for (size_t i = 0; i < arr_.size(); ++i) {
@@ -418,7 +432,7 @@ class NDArray {
   private:
     std::vector<float> arr_;
     std::vector<size_t> shape_;
-    std::vector<size_t> stride_;
+    std::vector<size_t> strides_;
 };
 
 
