@@ -25,7 +25,7 @@ class Kernel {
       return value_;
     }
 
-    virtual void backward(const std::list<Node::ptr>& outputs,
+    virtual void backward(const NDArray& suc_gradient,
         std::unordered_map<Node::ptr, NDArray>& gradients) const { }
 
     virtual std::string str() const {
@@ -50,7 +50,7 @@ class Add : public Kernel {
     Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
     
     virtual void forward() override;
-    virtual void backward(const std::list<Node::ptr>& outputs,
+    virtual void backward(const NDArray& suc_gradient,
         std::unordered_map<Node::ptr, NDArray>& gradients) const override;
 
     virtual std::string str() const override;
@@ -66,7 +66,7 @@ class Mul : public Kernel {
     Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
 
     virtual void forward() override;
-    virtual void backward(const std::list<Node::ptr>& outputs,
+    virtual void backward(const NDArray& suc_gradient,
         std::unordered_map<Node::ptr, NDArray>& gradients) const override;
 
     virtual std::string str() const override;
@@ -82,7 +82,7 @@ class Dot : public Kernel {
     Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
     
     virtual void forward() override;
-    virtual void backward(const std::list<Node::ptr>& outputs,
+    virtual void backward(const NDArray& suc_gradient,
         std::unordered_map<Node::ptr, NDArray>& gradients) const override;
 
     virtual std::string str() const override;
@@ -98,7 +98,7 @@ class MatMul : public Kernel {
     MatMul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
     
     virtual void forward() override;
-    virtual void backward(const std::list<Node::ptr>& outputs,
+    virtual void backward(const NDArray& suc_gradient,
         std::unordered_map<Node::ptr, NDArray>& gradients) const override;
 
     virtual std::string str() const override;

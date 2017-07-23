@@ -120,17 +120,23 @@ void Graph::eval() {
 
   std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, NDArray>> work_gradients;
   gradients_.clear();
-  auto dummy = std::list<Node::ptr>{var(NDArray({1}, {1}))};
+  auto dummy_grad = NDArray({1}, {1});
 
   for (int i = top_order.size() - 1; i >= 0; --i) {
     auto& node = top_order[i];
-    auto& suc_nodes = adj_[top_order[i]].empty() ? dummy : adj_[top_order[i]];
-    auto& pre_nodes = pre[top_order[i]];
+    auto& pre_nodes = pre[node];
     std::cout << "i: " << i << " - " << (top_order.size() - 1) << std::endl;
-    node->kernel().backward(suc_nodes, work_gradients[node]);
+    
+    if (adj_[node].empty()) {
+      node->kernel().backward(dummy_grad, work_gradients[node]);
+    } else {
+      for (auto& suc_node : adj_[node]) {
+        node->kernel().backward(work_gradients[suc_node][node], work_gradients[node]);
+      }
+    }
 
     if (pre_nodes.empty()) {
-      for (auto& n_suc : suc_nodes) {
+      for (auto& n_suc : adj_[node]) {
         const auto& grad_suc = work_gradients[n_suc][node];
 
         // leaf node
