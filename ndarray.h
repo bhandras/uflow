@@ -1,10 +1,10 @@
 #ifndef _ndarray_h_
 #define _ndarray_h_
 
+#include <cmath>
 #include <vector>
 #include <utility>
 #include <algorithm>
-#include <iostream>
 #include "util.h"
 #include "exception.h"
 
@@ -40,8 +40,17 @@ class NDArray {
       update_shape();
     }
 
-    void ones(size_t n) {
-      shape_ = std::vector<size_t>{n};
+    void ones(const std::vector<size_t>& shape) {
+      shape_ = shape;
+      update_shape();
+
+      for (auto& val : arr_) {
+        val = 1.0f;
+      }
+    }
+
+    void zeros(const std::vector<size_t>& shape) {
+      shape_ = shape;
       update_shape();
 
       for (auto& val : arr_) {
@@ -233,6 +242,44 @@ class NDArray {
           inc = new_shape[0] * nonzero_strides[0];
         }
         res.arr_[pos] = arr_[inc];
+      }
+
+      return res;
+    }
+
+    float max() const {
+      if (arr_.empty()) {
+        throw RuntimeError("maximum on zero-size array");
+      }
+
+      auto res = arr_[0];
+      for (auto i = 1; i < arr_.size(); ++i) {
+        res = std::max(res, arr_[i]);
+      }
+
+      return res;
+    }
+
+    NDArray exp() const {
+      NDArray tmp = *this;
+      return tmp.exp_();
+    }
+
+    NDArray& exp_() {
+      for (auto& val : arr_) {
+        val = std::exp(val);
+      }
+      return *this;
+    }
+
+    float sum() const {
+      if (arr_.empty()) {
+        throw RuntimeError("sum on zero-size array");
+      }
+
+      float res = 0.0f;
+      for (auto val : arr_) {
+        res += val;
       }
 
       return res;
