@@ -34,6 +34,14 @@ Node::ptr Graph::add(Node::ptr a, Node::ptr b) {
   return add_node;
 }
 
+Node::ptr Graph::sub(Node::ptr a, Node::ptr b) {
+  auto sub_node = std::make_shared<Node>(std::make_unique<Sub>(a, b));
+  adj_[a].push_back(sub_node);
+  adj_[b].push_back(sub_node);
+
+  return sub_node;
+}
+
 Node::ptr Graph::mul(Node::ptr a, Node::ptr b) {
   auto mul_node = std::make_shared<Node>(std::make_unique<Mul>(a, b));
   adj_[a].push_back(mul_node);

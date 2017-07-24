@@ -264,6 +264,32 @@ class NDArray {
       return *this;
     }
 
+    NDArray sub(const NDArray& other) const {
+      NDArray tmp = *this;
+      return tmp.sub_(other);
+    }
+
+    NDArray& sub_(const NDArray& other) {
+      if (shape_ != other.shape_) {
+        auto common_shape = get_common_shape(other);
+        if (common_shape.empty()) {
+          throw NDArray::ex_incompatible_shapes("sub", shape_, other.shape_);
+        }
+
+        if (common_shape != shape_) {
+          *this = expand(common_shape);
+        }
+
+        return sub_(other.expand(common_shape));
+      }
+
+      for (size_t i = 0; i < arr_.size(); ++i) {
+        arr_[i] -= other.arr_[i];
+      }
+
+      return *this;
+    }
+
     NDArray mul(const NDArray& other) const {
       NDArray tmp = *this;
       return tmp.mul_(other);

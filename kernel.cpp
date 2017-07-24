@@ -30,6 +30,30 @@ std::string Add::str() const {
   return "(" + a_->value().str() + " + " + b_->value().str() +  ")";
 }
 
+
+Sub::Sub(Node::ptr a, Node::ptr b)
+  : a_(a), b_(b) { }
+
+void Sub::forward() {
+  value_ = a_->value().sub(b_->value());
+}
+
+void Sub::backward(const NDArray& suc_gradient,
+    std::unordered_map<Node::ptr, NDArray>& gradients) const {
+  if (gradients.empty()) {
+    gradients[a_] = NDArray(a_->value().shape());
+    gradients[b_] = NDArray(b_->value().shape());
+  }
+  
+  gradients[a_].add_(suc_gradient);
+  gradients[b_].sub_(suc_gradient);
+}
+
+std::string Sub::str() const {
+  return "(" + a_->value().str() + " - " + b_->value().str() +  ")";
+}
+
+
 Mul::Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
   : a_(a), b_(b) { }
 

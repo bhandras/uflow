@@ -5,7 +5,7 @@ x1 = Variable(torch.FloatTensor([[2], [2], [2]]), requires_grad=True)
 x2 = Variable(torch.FloatTensor([[3], [3], [3]]), requires_grad=True)
 x3 = Variable(torch.FloatTensor([[4], [4], [4]]), requires_grad=True)
 
-x1_add_x2 = x1.add(x2)
+x1_add_x2 = x1.sub(x2)
 alma = x1_add_x2.dot(x3)
 print('alma', alma)
 alma.backward()

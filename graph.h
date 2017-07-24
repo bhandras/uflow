@@ -31,6 +31,7 @@ class Graph {
   public:
     Node::ptr var(NDArray value);
     Node::ptr add(Node::ptr a, Node::ptr b);
+    Node::ptr sub(Node::ptr a, Node::ptr b);
     Node::ptr mul(Node::ptr a, Node::ptr b);
     Node::ptr dot(Node::ptr a, Node::ptr b);
     Node::ptr mm(Node::ptr a, Node::ptr b);

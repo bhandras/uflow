@@ -45,6 +45,7 @@ class Value : public Kernel {
     virtual std::string str() const override;
 };
 
+
 class Add : public Kernel {
   public:
     Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
@@ -58,6 +59,20 @@ class Add : public Kernel {
   private:
     std::shared_ptr<Node> a_;
     std::shared_ptr<Node> b_;
+};
+
+
+class Sub : public Kernel {
+  public:
+    Sub(Node::ptr a, Node::ptr b);
+    virtual void forward() override;
+    virtual void backward(const NDArray& suc_gradient,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+
+    virtual std::string str() const override;
+  private:
+    Node::ptr a_;
+    Node::ptr b_;
 };
 
 

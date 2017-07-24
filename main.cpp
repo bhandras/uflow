@@ -56,7 +56,7 @@ int main() {
   std::cout << "x2=" << x2 << std::endl;
   std::cout << "x3=" << x3 << std::endl;
 
-  auto alma = g.dot(g.add(x1, x2), x3);
+  auto alma = g.dot(g.sub(x1, x2), x3);
   g.eval();
   std::cout << "alma=" << alma << std::endl;
   std::cout << "grad x1=" << g.gradient(x1) << std::endl;
