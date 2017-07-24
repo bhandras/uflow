@@ -48,7 +48,7 @@ class Value : public Kernel {
 
 class Add : public Kernel {
   public:
-    Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    Add(Node::ptr a, Node::ptr b);
     
     virtual void forward() override;
     virtual void backward(const NDArray& suc_gradient,
@@ -57,8 +57,8 @@ class Add : public Kernel {
     virtual std::string str() const override;
 
   private:
-    std::shared_ptr<Node> a_;
-    std::shared_ptr<Node> b_;
+    Node::ptr a_;
+    Node::ptr b_;
 };
 
 
@@ -78,7 +78,7 @@ class Sub : public Kernel {
 
 class Mul : public Kernel {
   public:
-    Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    Mul(Node::ptr a, Node::ptr b);
 
     virtual void forward() override;
     virtual void backward(const NDArray& suc_gradient,
@@ -87,14 +87,14 @@ class Mul : public Kernel {
     virtual std::string str() const override;
 
   private:
-    std::shared_ptr<Node> a_;
-    std::shared_ptr<Node> b_;
+    Node::ptr a_;
+    Node::ptr b_;
 };
 
 
 class Dot : public Kernel {
   public:
-    Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    Dot(Node::ptr a, Node::ptr b);
     
     virtual void forward() override;
     virtual void backward(const NDArray& suc_gradient,
@@ -103,14 +103,14 @@ class Dot : public Kernel {
     virtual std::string str() const override;
 
   private:
-    std::shared_ptr<Node> a_;
-    std::shared_ptr<Node> b_;
+    Node::ptr a_;
+    Node::ptr b_;
 };
 
 
 class MatMul : public Kernel {
   public:
-    MatMul(std::shared_ptr<Node> a, std::shared_ptr<Node> b);
+    MatMul(Node::ptr a, Node::ptr b);
     
     virtual void forward() override;
     virtual void backward(const NDArray& suc_gradient,
@@ -119,8 +119,8 @@ class MatMul : public Kernel {
     virtual std::string str() const override;
 
   private:
-    std::shared_ptr<Node> a_;
-    std::shared_ptr<Node> b_;
+    Node::ptr a_;
+    Node::ptr b_;
 };
 
 

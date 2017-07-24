@@ -8,7 +8,7 @@ std::string Value::str() const {
   return value_.str();
 }
 
-Add::Add(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
+Add::Add(Node::ptr a, Node::ptr b)
   : a_(a), b_(b) { }
 
 void Add::forward() {
@@ -54,7 +54,7 @@ std::string Sub::str() const {
 }
 
 
-Mul::Mul(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
+Mul::Mul(Node::ptr a, Node::ptr b)
   : a_(a), b_(b) { }
 
 void Mul::forward() {
@@ -76,7 +76,7 @@ std::string Mul::str() const {
   return "(" + a_->value().str() + " * " + b_->value().str() + ")";
 }
 
-Dot::Dot(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
+Dot::Dot(Node::ptr a, Node::ptr b)
   : a_(a), b_(b) { }
 
 void Dot::forward() {
@@ -97,7 +97,7 @@ std::string Dot::str() const {
   return "(" + a_->value().str() + " dot " + b_->value().str() + ")";
 }
 
-MatMul::MatMul(std::shared_ptr<Node> a, std::shared_ptr<Node> b)
+MatMul::MatMul(Node::ptr a, Node::ptr b)
   : a_(a), b_(b) { }
 
 void MatMul::forward() {
