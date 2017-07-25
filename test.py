@@ -1,17 +1,21 @@
 import torch
 from torch.autograd import Variable
+import torch.nn.functional as F
 
-x1 = Variable(torch.FloatTensor([[2], [2], [2]]), requires_grad=True)
-x2 = Variable(torch.FloatTensor([[3], [3], [3]]), requires_grad=True)
-x3 = Variable(torch.FloatTensor([[4], [4], [4]]), requires_grad=True)
+x1 = Variable(torch.FloatTensor([1, 2, 3]), requires_grad=True)
+x2 = Variable(torch.FloatTensor([4, 5, 6]), requires_grad=True)
 
-x1_add_x2 = x1.sub(x2)
-alma = x1_add_x2.dot(x3)
-print('alma', alma)
-alma.backward()
+sm_x1 = F.softmax(x1)
+sm_x2 = F.softmax(x2)
+
+print(sm_x1)
+print(sm_x2)
+
+d = sm_x1.dot(sm_x2)
+print('d', d)
+d.backward()
 print('x1 grad', x1.grad)
 print('x2 grad', x2.grad)
-print('x3 grad', x3.grad)
 
 '''
 w = Variable(torch.FloatTensor([[0, 1, 2], [3, 4, 5], [6, 7, 8]]))

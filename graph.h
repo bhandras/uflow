@@ -35,6 +35,8 @@ class Graph {
     Node::ptr mul(Node::ptr a, Node::ptr b);
     Node::ptr dot(Node::ptr a, Node::ptr b);
     Node::ptr mm(Node::ptr a, Node::ptr b);
+    Node::ptr softmax(Node::ptr node);
+
     void eval();
     NDArray gradient(const Node::ptr& node) const;
 

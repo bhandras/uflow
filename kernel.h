@@ -123,7 +123,18 @@ class MatMul : public Kernel {
     Node::ptr b_;
 };
 
+class Softmax : public Kernel {
+  public:
+    Softmax(Node::ptr node);
+    virtual void forward() override;
+    virtual void backward(const NDArray& suc_gradient,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+    virtual std::string str() const override;
 
+  private:
+    Node::ptr node_;
+    NDArray derivative_;
+};
 
 #endif // _kernel_h_
 

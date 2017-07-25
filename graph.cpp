@@ -66,6 +66,12 @@ Node::ptr Graph::mm(Node::ptr a, Node::ptr b) {
   return mm_node;
 }
 
+Node::ptr Graph::softmax(Node::ptr node) {
+  auto softmax_node = std::make_shared<Node>(std::make_unique<Softmax>(node));
+  adj_[node].push_back(softmax_node);
+  return softmax_node;
+}
+
 void Graph::eval() {
   std::unordered_map<Node::ptr, std::list<Node::ptr>> pre;
   std::unordered_map<Node::ptr, int> input_cnt;
@@ -122,18 +128,13 @@ void Graph::eval() {
     node->kernel().forward();
   }
 
-  std::cout << "eval res: " <<top_order[top_order.size() - 1]->value() << std::endl;
-
-  std::cout << std::endl << "backprop" << std::endl;
-
   std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, NDArray>> work_gradients;
   gradients_.clear();
-  auto dummy_grad = NDArray({1}, {1});
+  auto dummy_grad = NDArray({1}, {1.0f});
 
   for (int i = top_order.size() - 1; i >= 0; --i) {
     auto& node = top_order[i];
     auto& pre_nodes = pre[node];
-    std::cout << "i: " << i << " - " << (top_order.size() - 1) << std::endl;
     
     if (adj_[node].empty()) {
       node->kernel().backward(dummy_grad, work_gradients[node]);
@@ -144,8 +145,8 @@ void Graph::eval() {
     }
 
     if (pre_nodes.empty()) {
-      for (auto& n_suc : adj_[node]) {
-        const auto& grad_suc = work_gradients[n_suc][node];
+      for (auto& suc_node : adj_[node]) {
+        const auto& grad_suc = work_gradients[suc_node][node];
 
         // leaf node
         if (gradients_.count(node) == 0) {

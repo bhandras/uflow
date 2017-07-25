@@ -122,3 +122,55 @@ std::string MatMul::str() const {
   return "(" + a_->value().str() + " mm " + b_->value().str() + ")";
 }
 
+// Great explanation: 
+// http://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/
+Softmax::Softmax(Node::ptr node)
+  : node_(node) { }
+
+void Softmax::forward() {
+  value_ = node_->value();
+  
+  auto m = value_.max();
+  value_.sub_(m).exp_();
+  value_.mul_(value_.sum().recip_());
+
+  // todo: at the moment we suppose that value_ is a row vector
+  size_t d1 = value_.shape()[0];
+  size_t d2 = value_.shape()[1];
+  // todo: handle batches
+  // derivative_.zeros({d1, d2, d2});
+  derivative_.zeros({d2, d2});
+
+  for (size_t d = 0; d < d1; ++d) {
+    for (size_t i = 0; i < d2; ++i) {
+      for (size_t j = 0; j < d2; ++j) {
+        if (i == j) {
+          float v_i = value_.get({d, i});
+          derivative_.set({i, j}, v_i * (1.0f - v_i));
+        } else {
+          float v_i = value_.get({d, i});
+          float v_j = value_.get({d, j});
+          derivative_.set({i, j}, -v_i * v_j);
+        }
+      }
+    }
+  }
+}
+
+void Softmax::backward(const NDArray& suc_gradient,
+        std::unordered_map<Node::ptr, NDArray>& gradients) const {
+  NDArray sg = suc_gradient;
+  // todo: handle batches
+  // sg.unsqueeze(0);
+
+  if (gradients.empty()) {
+    gradients[node_].zeros(sg.shape());
+  }
+  gradients[node_].add_(sg.mm(derivative_));
+}
+
+std::string Softmax::str() const {
+  return "softmax(" + node_->value().str() + ")";
+}
+
+

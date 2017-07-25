@@ -54,7 +54,7 @@ class NDArray {
       update_shape();
 
       for (auto& val : arr_) {
-        val = 1.0f;
+        val = 0.0f;
       }
     }
 
@@ -247,21 +247,61 @@ class NDArray {
       return res;
     }
 
-    float max() const {
+    void set(const std::vector<size_t>& index, float value) {
+      if (index.size() != shape_.size()) {
+        throw NDArray::ex_incompatible_shapes("set", index, shape_);
+      }
+
+      for (size_t i = 0; i < shape_.size(); ++i) {
+        if (shape_[i] <= index[i]) {
+          // todo: better exception for out of bounds
+          throw RuntimeError("set: out of bounds");
+        }
+      }
+
+      size_t pos = 0;
+      for (size_t i = 0; i < index.size(); ++i) {
+        pos += strides_[i] * index[i];
+      }
+
+      arr_[pos] = value;
+    }
+
+    float get(const std::vector<size_t>& index) const {
+      if (index.size() != shape_.size()) {
+        throw NDArray::ex_incompatible_shapes("get", index, shape_);
+      }
+
+      for (size_t i = 0; i < shape_.size(); ++i) {
+        if (shape_[i] <= index[i]) {
+          // todo: better exception for out of bounds
+          throw RuntimeError("get: out of bounds");
+        }
+      }
+
+      size_t pos = 0;
+      for (size_t i = 0; i < index.size(); ++i) {
+        pos += strides_[i] * index[i];
+      }
+
+     return  arr_[pos];
+    }
+
+    NDArray max() const {
       if (arr_.empty()) {
         throw RuntimeError("maximum on zero-size array");
       }
 
-      auto res = arr_[0];
+      auto res = NDArray({1});
       for (auto i = 1; i < arr_.size(); ++i) {
-        res = std::max(res, arr_[i]);
+        res.arr_[0] = std::max(res.arr_[0], arr_[i]);
       }
 
       return res;
     }
 
     NDArray exp() const {
-      NDArray tmp = *this;
+      auto tmp = *this;
       return tmp.exp_();
     }
 
@@ -272,21 +312,38 @@ class NDArray {
       return *this;
     }
 
-    float sum() const {
+    NDArray recip() const {
+      auto tmp = *this;
+      return tmp.recip_();
+    }
+
+    NDArray& recip_() {
+      if (arr_.empty()) {
+        throw RuntimeError("recip on zero-size array");
+      }
+
+      for (auto& val : arr_) {
+        val = 1.0f / val;
+      }
+
+      return *this;
+    }
+    
+    NDArray sum() const {
       if (arr_.empty()) {
         throw RuntimeError("sum on zero-size array");
       }
 
-      float res = 0.0f;
+      auto res = NDArray({1});
       for (auto val : arr_) {
-        res += val;
+        res.arr_[0] += val;
       }
 
       return res;
     }
 
     NDArray add(const NDArray& other) const {
-      NDArray tmp = *this;
+      auto tmp = *this;
       return tmp.add_(other);
     }
 
@@ -312,7 +369,7 @@ class NDArray {
     }
 
     NDArray sub(const NDArray& other) const {
-      NDArray tmp = *this;
+      auto tmp = *this;
       return tmp.sub_(other);
     }
 
@@ -338,7 +395,7 @@ class NDArray {
     }
 
     NDArray mul(const NDArray& other) const {
-      NDArray tmp = *this;
+      auto tmp = *this;
       return tmp.mul_(other);
     }
 
