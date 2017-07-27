@@ -11,6 +11,58 @@
 class NDArray;
 std::ostream& operator<<(std::ostream& os, const NDArray& arr);
 
+class Shape {
+  public:
+    static const size_t max_size = std::numeric_limits<int>::max();
+
+    Shape(std::initializer_list<size_t> l) {
+      if (l.size() > max_size) {
+        throw RuntimeError("Max shape is: "
+            + std::to_string(max_size));
+      }
+      v_.insert(v_.end(), l.begin(), l.end());
+    }
+
+    bool operator==(const Shape& other) const {
+      return v_ == other.v_;
+    }
+
+    bool operator==(const std::vector<size_t>& other) const {
+      return v_ == other;
+    }
+
+    size_t operator[](int index) const {
+      if (std::abs(index) >= v_.size()) {
+        throw RuntimeError("Shape::[] index out of bounds: "
+            + std::to_string(index));
+      }
+
+      size_t offset = index < 0 ? v_.size() : 0;
+      return v_[offset + index];
+    }
+
+    bool is_row_vector() const {
+      size_t s = v_.size();
+      // (N)
+      if (s == 1) return true;
+      // ..,1,N
+      if (s >= 2 && v_[s - 1] >= 1 && v_[s - 2] == 1) return true;
+      
+      return false; 
+    }
+
+    bool is_column_vector() const {
+      size_t s = v_.size();
+      // ..,N,1
+      if (s >= 2 && v_[s - 1] == 1 && v_[s - 2] >= 1) return true;
+      
+      return false;
+    }
+
+  private:
+    std::vector<size_t> v_;
+};
+
 class NDArray {
   public:
     NDArray() {} 
