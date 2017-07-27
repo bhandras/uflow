@@ -93,8 +93,12 @@ class Op : public Node {
 
 class Variable : public Op {
  public:
-    static VariableRef create(GraphRef graph, bool requires_grad=true); 
-    Variable(const Op::protected_&, GraphRef graph, bool requires_grad);
+    static VariableRef create(GraphRef graph,
+        const std::vector<size_t>& shape, bool requires_grad=true);
+
+    Variable(const Op::protected_&, GraphRef graph,
+        const std::vector<size_t>& shape, bool requires_grad);
+
     virtual ~Variable();
   
     VariableRef ref();
@@ -113,6 +117,7 @@ class Variable : public Op {
     const Variable& operator=(const Variable&) = delete;
 
     std::shared_ptr<ValueKernel> kernel_;
+    std::vector<size_t> shape_;
     bool requires_grad_;
 };
 

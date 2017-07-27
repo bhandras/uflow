@@ -92,7 +92,7 @@ class NDArray {
       }
 
       if (new_size != arr_.size()) {
-        throw NDArray::ex_incompatible_shapes("reshape", shape_, shape);
+        throw IncompatibleShapes("reshape", {shape_, shape});
       }
 
       shape_ = shape;
@@ -249,13 +249,13 @@ class NDArray {
 
     void set(const std::vector<size_t>& index, float value) {
       if (index.size() != shape_.size()) {
-        throw NDArray::ex_incompatible_shapes("set", index, shape_);
+        throw IncompatibleShapes("NDArray::set", {index, shape_});
       }
 
       for (size_t i = 0; i < shape_.size(); ++i) {
         if (shape_[i] <= index[i]) {
           // todo: better exception for out of bounds
-          throw RuntimeError("set: out of bounds");
+          throw RuntimeError("NDArray::set: out of bounds");
         }
       }
 
@@ -269,13 +269,13 @@ class NDArray {
 
     float get(const std::vector<size_t>& index) const {
       if (index.size() != shape_.size()) {
-        throw NDArray::ex_incompatible_shapes("get", index, shape_);
+        throw IncompatibleShapes("NDArray::get", {index, shape_});
       }
 
       for (size_t i = 0; i < shape_.size(); ++i) {
         if (shape_[i] <= index[i]) {
           // todo: better exception for out of bounds
-          throw RuntimeError("get: out of bounds");
+          throw RuntimeError("NDArray::get: out of bounds");
         }
       }
 
@@ -351,7 +351,7 @@ class NDArray {
       if (shape_ != other.shape_) {
         auto common_shape = get_common_shape(other);
         if (common_shape.empty()) {
-          throw NDArray::ex_incompatible_shapes("add", shape_, other.shape_);
+          throw IncompatibleShapes("NDArray::add", {shape_, other.shape_});
         }
 
         if (common_shape != shape_) {
@@ -377,7 +377,7 @@ class NDArray {
       if (shape_ != other.shape_) {
         auto common_shape = get_common_shape(other);
         if (common_shape.empty()) {
-          throw NDArray::ex_incompatible_shapes("sub", shape_, other.shape_);
+          throw IncompatibleShapes("NDArray::sub", {shape_, other.shape_});
         }
 
         if (common_shape != shape_) {
@@ -403,7 +403,7 @@ class NDArray {
       if (shape_ != other.shape_) {
         auto common_shape = get_common_shape(other);
         if (common_shape.empty()) {
-          throw NDArray::ex_incompatible_shapes("mul", shape_, other.shape_);
+          throw IncompatibleShapes("NDArray::mul", {shape_, other.shape_});
         }
 
         if (common_shape != shape_) {
@@ -426,13 +426,13 @@ class NDArray {
       }
       // shape size
       if (shape_.size() != other.shape_.size()) {
-        throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
+        throw IncompatibleShapes("NDArray::dot", {shape_, other.shape_});
       }
 
       // last dim
       size_t ndim = shape_.size();
       if (ndim >= 1 && shape_[ndim - 1] != other.shape_[ndim - 1]) {
-        throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
+        throw IncompatibleShapes("NDArray::dot", {shape_, other.shape_});
       }
 
       // remaining
@@ -449,7 +449,7 @@ class NDArray {
         }
 
         if (!good) {
-          throw NDArray::ex_incompatible_shapes("dot", shape_, other.shape_);
+          throw IncompatibleShapes("NDArray::dot", {shape_, other.shape_});
         }
       }
 
@@ -492,18 +492,18 @@ class NDArray {
 
     NDArray mm(const NDArray& other) const {
       if (shape_.size() != other.shape_.size()) {
-        throw NDArray::ex_incompatible_shapes("mm", shape_, other.shape_);
+        throw IncompatibleShapes("NDArray::mm", {shape_, other.shape_});
       }
 
       size_t ndim = shape_.size();
       if (ndim >= 2 && shape_[ndim - 1] != other.shape_[ndim - 2]) {
-        throw NDArray::ex_incompatible_shapes("mm", shape_, other.shape_);
+        throw IncompatibleShapes("NDArray::mm", {shape_, other.shape_});
       }
 
       if (ndim > 2) {
         for (size_t i = 0; i < ndim - 2; ++i) {
           if (shape_[i] != other.shape_[i]) {
-            throw NDArray::ex_incompatible_shapes("mm", shape_, other.shape_);
+            throw IncompatibleShapes("NDArray::mm", {shape_, other.shape_});
           }
         }
       }
@@ -544,19 +544,6 @@ class NDArray {
       }
 
       return res;
-    }
-
-    static ValueError ex_incompatible_shapes(
-        const char* prefix,
-        const std::vector<size_t>& a,
-        const std::vector<size_t>& b) {
-       
-      return ValueError(std::string(prefix)
-          + ": "
-          + "incompatible shapes "
-          + vstr(a)
-          + " and "
-          + vstr(b));
     }
 
   private:

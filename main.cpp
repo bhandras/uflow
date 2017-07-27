@@ -51,12 +51,11 @@ int main() {
   std::cout << "qq mul zz=" << qq.mul(zz) << std::endl;
   */
 
-  auto x1 = Variable::create(g);
-  auto x2 = Variable::create(g);
+  auto x1 = Variable::create(g, {1, 3});
+  auto x2 = Variable::create(g, {1, 3});
   
   x1->set_value(NDArray({1,3}, {1, 2, 3}));
   x2->set_value(NDArray({1,3}, {4, 5, 6}));
-
   auto sm_x1 = x1->softmax();
   auto sm_x2 = x2->softmax();
   auto d = sm_x1->dot(sm_x2);

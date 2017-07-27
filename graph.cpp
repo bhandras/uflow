@@ -27,6 +27,9 @@ Node::Node(GraphRef graph)
   : graph_(graph) { }
 
 
+Op::Op(const Op::protected_&, GraphRef graph) 
+  : Node(graph) { }
+
 Op::~Op() {}
 
 OpRef Op::ref() {
@@ -96,13 +99,18 @@ std::string Op::str() const {
     + "\n}";
 }
 
-Op::Op(const Op::protected_&, GraphRef graph) 
-  : Node(graph) { }
 
-
-VariableRef Variable::create(GraphRef graph, bool requires_grad/* = true */) {
-  return std::make_shared<Variable>(Op::protected_{0}, graph, requires_grad); 
+VariableRef Variable::create(GraphRef graph,
+    const std::vector<size_t>& shape, bool requires_grad/* = true */) {
+  return std::make_shared<Variable>(Op::protected_{0}, graph, shape, requires_grad); 
 }
+
+Variable::Variable(const Op::protected_& p, GraphRef graph,
+    const std::vector<size_t>& shape, bool requires_grad)
+  : Op(p, graph)
+  , kernel_(std::make_shared<ValueKernel>())
+  , shape_(shape)
+  , requires_grad_(requires_grad) { }
 
 Variable::~Variable() { }
 
@@ -115,6 +123,27 @@ Variable::operator NodeRef() {
 }
 
 void Variable::set_value(const NDArray& value) {
+  const auto& shape1 = shape_;
+  const auto& shape2 = value.shape();
+
+  if (shape1 != shape2) {
+    int s1 = shape1.size();
+    int s2 = shape2.size();
+
+    bool ok = false;
+    if (std::abs(s1 - s2) <= 1) {
+      ok = true;
+      for (size_t i = 1; i <= std::min(s1, s2); ++i) {
+        ok = (shape1[s1 - i] == shape2[s2 - i]);
+        if (!ok) break;
+      }
+    }
+
+    if (!ok) {
+      throw IncompatibleShapes("set_value", {shape1, shape2});
+    }
+  }
+
   kernel_->set_value(value);
 }
 
@@ -129,11 +158,6 @@ KernelRef Variable::kernel() const {
 bool Variable::requires_grad() const {
   return requires_grad_;
 }
-
-Variable::Variable(const Op::protected_& p, GraphRef graph, bool requires_grad)
-  : Op(p, graph)
-  , kernel_(std::make_shared<ValueKernel>())
-  , requires_grad_(requires_grad) { }
 
 
 void Graph::add(NodeRef node) {

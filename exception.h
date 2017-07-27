@@ -2,7 +2,10 @@
 #define _exception_h_
 
 #include <string>
+#include <vector>
 #include <exception>
+
+#include "util.h"
 
 class Exception : public std::exception {
   public:
@@ -29,6 +32,26 @@ class RuntimeError : public Exception {
   public:
     RuntimeError(const std::string& msg)
       : Exception("RuntimeError", msg) { }
+};
+
+class IncompatibleShapes : public ValueError {
+  public:
+    static std::string helper(const std::string& fn,
+        std::initializer_list<std::vector<size_t>> l) {
+      std::stringstream ss;
+      ss << fn << ": incompatible shapes {";
+
+      for (auto& v : l) {
+        ss << " " << vstr(v);
+      }
+
+      ss << " }";
+      return ss.str();
+    }
+    
+    IncompatibleShapes(const std::string& fn,
+        std::initializer_list<std::vector<size_t>> shapes)
+      : ValueError(helper(fn, shapes)) { }
 };
 
 #endif // _exception_h_
