@@ -1,9 +1,11 @@
+#include <iostream>
+
 #include "graph.h"
 #include "kernel.h"
 #include "ndarray.h"
 
 int main() {
-  Graph g;
+  GraphRef g = std::make_shared<Graph>();
   /*
   auto arr = NDArray({5});
   std::cout << "---" << std::endl << arr << std::endl;
@@ -48,40 +50,26 @@ int main() {
   std::cout << "zz mul qq=" << zz.mul(qq) << std::endl;
   std::cout << "qq mul zz=" << qq.mul(zz) << std::endl;
   */
+
+  auto x1 = Variable::create(g);
+  auto x2 = Variable::create(g);
   
-  auto x1 = g.var(NDArray({3,1}, {2}));
-  auto x2 = g.var(NDArray({3,1}, {3}));
-  auto x3 = g.var(NDArray({3,1}, {4}));
+  x1->set_value(NDArray({1,3}, {1, 2, 3}));
+  x2->set_value(NDArray({1,3}, {4, 5, 6}));
+
+  auto sm_x1 = x1->softmax();
+  auto sm_x2 = x2->softmax();
+  auto d = sm_x1->dot(sm_x2);
+  g->eval();
+
   std::cout << "x1=" << std::endl << x1 << std::endl;
   std::cout << "x2=" << std::endl << x2 << std::endl;
-  std::cout << "x3=" << std::endl << x3 << std::endl;
-
-  auto alma = g.dot(g.sub(x1, x2), x3);
-  g.eval();
-  std::cout << "alma=" << std::endl << alma << std::endl;
-  std::cout << "grad x1=" << std::endl << g.gradient(x1) << std::endl;
-  std::cout << "grad x2=" << std::endl << g.gradient(x2) << std::endl;
-  std::cout << "grad x3=" << std::endl << g.gradient(x3) << std::endl;
- 
-/*
-  auto w = NDArray();
-  w.arange(9);
-  w.reshape({3, 3});
-  auto ww = g.var(w);
-  std::cout << "ww=" << ww << std::endl;
-  auto t = g.mm(ww, x1);
-  auto m = g.add(x2, t);
-  auto z = g.dot(m, x3);
-  g.eval();
-
-  //std::cout << "m=" << m << std::endl;
-  //std::cout << "z=" << z << std::endl;
-  std::cout << "t=" << t->value() << std::endl;
-  std::cout << "grad x1=" << g.gradient(x1) << std::endl;
-  std::cout << "grad x2=" << g.gradient(x2) << std::endl;
-  std::cout << "grad x3=" << g.gradient(x3) << std::endl;
-  */
-
+  
+  std::cout << "sm_x1=" << std::endl << sm_x1->get_value() << std::endl;
+  std::cout << "sm_x2=" << std::endl << sm_x2->get_value() << std::endl;
+  std::cout << "d=" << std::endl << d->get_value() << std::endl;
+  std::cout << "grad x1=" << std::endl << g->gradient(x1) << std::endl;
+  std::cout << "grad x2=" << std::endl << g->gradient(x2) << std::endl;
   
   /*
   NDArray a({3, 1}, {1, 2, 3});
@@ -106,7 +94,7 @@ int main() {
   std::cout << "e_t=" << et << std::endl;
   */
 
-/* 
+  /* 
   NDArray xx({2}, {2, 3});
   std::cout << xx << std::endl; 
   xx.unsqueeze(1);

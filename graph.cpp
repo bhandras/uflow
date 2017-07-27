@@ -5,76 +5,146 @@
 #include "graph.h"
 #include "kernel.h"
 
-Node::Node(std::unique_ptr<Kernel> kernel)
-  : kernel_(std::move(kernel)) { }
+Node::~Node() {}
 
-
-void Node::eval() {
-  kernel_->forward();
+NodeRef Node::ref() {
+  return shared_from_this();
 }
 
-const NDArray& Node::value() const {
-  return kernel_->value();
+GraphRef Node::graph() {
+  return graph_;
+}
+
+const NDArray& Node::get_value() const {
+  return kernel()->get_value();
 }
 
 std::string Node::str() const {
-  return kernel_->str();
+  return "node";
 }
 
-Node::ptr Graph::var(NDArray value) {
-  auto var_node = std::make_shared<Node>(std::make_unique<Value>(value));
-  return var_node;
+Node::Node(GraphRef graph) 
+  : graph_(graph) { }
+
+
+Op::~Op() {}
+
+OpRef Op::ref() {
+  return std::static_pointer_cast<Op>(shared_from_this());
 }
 
-Node::ptr Graph::add(Node::ptr a, Node::ptr b) {
-  auto add_node = std::make_shared<Node>(std::make_unique<Add>(a, b));
-  adj_[a].push_back(add_node);
-  adj_[b].push_back(add_node);
-
-  return add_node;
+Op::operator NodeRef () {
+  return Node::ref();
 }
 
-Node::ptr Graph::sub(Node::ptr a, Node::ptr b) {
-  auto sub_node = std::make_shared<Node>(std::make_unique<Sub>(a, b));
-  adj_[a].push_back(sub_node);
-  adj_[b].push_back(sub_node);
+template <class K, class... Args>
+OpRef Op::op(const std::string& name, Args... args) {
+  std::vector<NodeRef> argv = {Node::ref(), args...};
+  
+  for (size_t i = 1; i < argv.size(); ++i) {
+    if (argv[0]->graph() != argv[i]->graph()) {
+      throw RuntimeError(name + ": trying to extend grapth with node from a different graph");
+    }
+  }
 
-  return sub_node;
+  auto kernel = std::make_shared<K>();
+  kernel->set_inputs(argv);
+
+  auto op = std::make_shared<Op>(protected_{0}, argv[0]->graph()); 
+  op->set_kernel(kernel);
+  op->graph()->add(std::static_pointer_cast<Node>(op));
+  return op;
 }
 
-Node::ptr Graph::mul(Node::ptr a, Node::ptr b) {
-  auto mul_node = std::make_shared<Node>(std::make_unique<Mul>(a, b));
-  adj_[a].push_back(mul_node);
-  adj_[b].push_back(mul_node);
+template OpRef Op::op<AddKernel, NodeRef>(const std::string&, NodeRef);
+template OpRef Op::op<SubKernel, NodeRef>(const std::string&, NodeRef);
+template OpRef Op::op<MulKernel, NodeRef>(const std::string&, NodeRef);
+template OpRef Op::op<DotKernel, NodeRef>(const std::string&, NodeRef);
+template OpRef Op::op<MatMulKernel, NodeRef>(const std::string&, NodeRef);
+template OpRef Op::op<SoftmaxKernel>(const std::string&);
+ 
 
-  return mul_node;
+OpRef Op::add(NodeRef other) {
+  return op<AddKernel, NodeRef>("add", other);
 }
 
-Node::ptr Graph::dot(Node::ptr a, Node::ptr b) {
-  auto dot_node = std::make_shared<Node>(std::make_unique<Dot>(a, b));
-  adj_[a].push_back(dot_node);
-  adj_[b].push_back(dot_node);
-
-  return dot_node;
+OpRef Op::sub(NodeRef other) {
+  return op<SubKernel, NodeRef>("sub", other);
 }
 
-Node::ptr Graph::mm(Node::ptr a, Node::ptr b) {
-  auto mm_node = std::make_shared<Node>(std::make_unique<MatMul>(a, b));
-  adj_[a].push_back(mm_node);
-  adj_[b].push_back(mm_node);
-
-  return mm_node;
+OpRef Op::mul(NodeRef other) {
+  return op<MulKernel, NodeRef>("mul", other);
 }
 
-Node::ptr Graph::softmax(Node::ptr node) {
-  auto softmax_node = std::make_shared<Node>(std::make_unique<Softmax>(node));
-  adj_[node].push_back(softmax_node);
-  return softmax_node;
+OpRef Op::dot(NodeRef other) {
+  return op<DotKernel, NodeRef>("dot", other);
+}
+
+OpRef Op::mm(NodeRef other) {
+  return op<MatMulKernel, NodeRef>("mm", other);
+}
+
+OpRef Op::softmax() {
+  return op<SoftmaxKernel>("softmax");
+}
+
+std::string Op::str() const {
+  return "op: {\n"
+    + kernel_->str()
+    + " = "
+    + kernel_->get_value().str()
+    + "\n}";
+}
+
+Op::Op(const Op::protected_&, GraphRef graph) 
+  : Node(graph) { }
+
+
+VariableRef Variable::create(GraphRef graph, bool requires_grad/* = true */) {
+  return std::make_shared<Variable>(Op::protected_{0}, graph, requires_grad); 
+}
+
+Variable::~Variable() { }
+
+VariableRef Variable::ref() {
+  return std::static_pointer_cast<Variable>(shared_from_this());
+}
+
+Variable::operator NodeRef() {
+  return Node::ref();
+}
+
+void Variable::set_value(const NDArray& value) {
+  kernel_->set_value(value);
+}
+
+std::string Variable::str() const {
+  return "var: {\n" + kernel_->str() + "\n}";
+}
+
+KernelRef Variable::kernel() const {
+  return std::static_pointer_cast<Kernel>(kernel_);
+}
+
+bool Variable::requires_grad() const {
+  return requires_grad_;
+}
+
+Variable::Variable(const Op::protected_& p, GraphRef graph, bool requires_grad)
+  : Op(p, graph)
+  , kernel_(std::make_shared<ValueKernel>())
+  , requires_grad_(requires_grad) { }
+
+
+void Graph::add(NodeRef node) {
+  auto& inputs = node->kernel()->get_inputs();
+  for (auto& input_node : inputs) {
+    adj_[input_node].push_back(node);
+  }
 }
 
 void Graph::eval() {
-  std::unordered_map<Node::ptr, std::list<Node::ptr>> pre;
-  std::unordered_map<Node::ptr, int> input_cnt;
+  std::unordered_map<NodeRef, int> input_cnt;
 
   for (const auto& item : adj_) {
     const auto& node = item.first;
@@ -82,16 +152,14 @@ void Graph::eval() {
   }
 
   for (const auto& item : adj_) {
-    const auto& u = item.first;
     const auto& suc_u = item.second;
 
     for (const auto& v : suc_u) {
       input_cnt[v]++;
-      pre[v].push_front(u);
     }
   }
 
-  std::queue<Node::ptr> q;
+  std::queue<NodeRef> q;
 
   for (const auto& item : input_cnt) {
     const auto& node = item.first;
@@ -102,7 +170,7 @@ void Graph::eval() {
     }
   }
 
-  std::vector<Node::ptr> top_order;
+  std::vector<NodeRef> top_order;
   int count = 0;
 
   while (!q.empty()) {
@@ -123,43 +191,44 @@ void Graph::eval() {
     throw RuntimeError("graph contains cycle");
   }
 
-
-  for (const auto& node : top_order) {  
-    node->kernel().forward();
+  for (const auto& node : top_order) {
+    node->kernel()->forward();
   }
-
-  std::unordered_map<Node::ptr, std::unordered_map<Node::ptr, NDArray>> work_gradients;
+  
   gradients_.clear();
-  auto dummy_grad = NDArray({1}, {1.0f});
+  
+  for (size_t i = top_order.size(); i != 0; --i) {
+    auto node = top_order[i - 1];
+    auto kernel = node->kernel();
+    bool leaf_node = kernel->get_inputs().empty();
 
-  for (int i = top_order.size() - 1; i >= 0; --i) {
-    auto& node = top_order[i];
-    auto& pre_nodes = pre[node];
-    
     if (adj_[node].empty()) {
-      node->kernel().backward(dummy_grad, work_gradients[node]);
-    } else {
-      for (auto& suc_node : adj_[node]) {
-        node->kernel().backward(work_gradients[suc_node][node], work_gradients[node]);
+      auto output_grad = NDArray({1}, {1});
+      if (!leaf_node) {
+        kernel->backward(output_grad);
+      } else {
+        gradients_[node] = output_grad;
       }
-    }
-
-    if (pre_nodes.empty()) {
-      for (auto& suc_node : adj_[node]) {
-        const auto& grad_suc = work_gradients[suc_node][node];
-
-        // leaf node
-        if (gradients_.count(node) == 0) {
-          gradients_[node] = grad_suc;
+    } else {
+      for (auto& output_node : adj_[node]) {
+        auto output_grad = output_node->kernel()->get_gradient(node);
+        
+        if (!leaf_node) {
+          kernel->backward(output_grad);
         } else {
-          gradients_[node].add_(grad_suc);
+          if (gradients_.count(node) == 0) {
+            gradients_[node] = output_grad;
+          } else {
+            gradients_[node].add_(output_grad);
+          }
+
         }
-      }      
+      } 
     }
   }
 }
 
-NDArray Graph::gradient(const Node::ptr& node) const {
+NDArray Graph::gradient(const NodeRef& node) const {
   auto it = gradients_.find(node);
   if (it != gradients_.end()) {
     return it->second;
@@ -168,13 +237,17 @@ NDArray Graph::gradient(const Node::ptr& node) const {
   return NDArray();
 }
 
-
-std::ostream& operator<<(std::ostream& os, const Node& node) {
-  os << node.str();
+std::ostream& operator<<(std::ostream& os, const NodeRef& node) {
+  os << node->str();
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const Node::ptr& node) {
+std::ostream& operator<<(std::ostream& os, const OpRef& node) {
+  os << node->str();
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const VariableRef& node) {
   os << node->str();
   return os;
 }

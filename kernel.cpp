@@ -1,134 +1,127 @@
-#include <iostream>
 #include <string>
 #include "kernel.h"
 #include "graph.h"
-    
 
-std::string Value::str() const {
-  return value_.str();
+void AddKernel::forward() {
+  value_ = inputs_[0]->get_value().add(inputs_[1]->get_value());
 }
 
-Add::Add(Node::ptr a, Node::ptr b)
-  : a_(a), b_(b) { }
-
-void Add::forward() {
-  value_ = a_->value().add(b_->value());
-}
-
-void Add::backward(const NDArray& suc_gradient,
-    std::unordered_map<Node::ptr, NDArray>& gradients) const {
-  if (gradients.empty()) {
-    gradients[a_] = NDArray(a_->value().shape());
-    gradients[b_] = NDArray(b_->value().shape());
+void AddKernel::backward(const NDArray& output_grad) {
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(inputs_[0]->get_value().shape());
+    gradients_[inputs_[1]].zeros(inputs_[1]->get_value().shape());
   }
   
-  gradients[a_].add_(suc_gradient);
-  gradients[b_].add_(suc_gradient);
+  gradients_[inputs_[0]].add_(output_grad);
+  gradients_[inputs_[1]].add_(output_grad);
 }
 
-std::string Add::str() const {
-  return "(" + a_->value().str() + " + " + b_->value().str() +  ")";
+std::string AddKernel::str() const {
+  return "("
+    + inputs_[0]->get_value().str()
+    + " + "
+    + inputs_[1]->get_value().str()
+    +  ")";
 }
 
-
-Sub::Sub(Node::ptr a, Node::ptr b)
-  : a_(a), b_(b) { }
-
-void Sub::forward() {
-  value_ = a_->value().sub(b_->value());
+void SubKernel::forward() {
+  value_ = inputs_[0]->get_value().sub(inputs_[1]->get_value());
 }
 
-void Sub::backward(const NDArray& suc_gradient,
-    std::unordered_map<Node::ptr, NDArray>& gradients) const {
-  if (gradients.empty()) {
-    gradients[a_] = NDArray(a_->value().shape());
-    gradients[b_] = NDArray(b_->value().shape());
+void SubKernel::backward(const NDArray& output_grad) {
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(inputs_[0]->get_value().shape());
+    gradients_[inputs_[1]].zeros(inputs_[1]->get_value().shape());
   }
   
-  gradients[a_].add_(suc_gradient);
-  gradients[b_].sub_(suc_gradient);
+  gradients_[inputs_[0]].add_(output_grad);
+  gradients_[inputs_[1]].sub_(output_grad);
 }
 
-std::string Sub::str() const {
-  return "(" + a_->value().str() + " - " + b_->value().str() +  ")";
+std::string SubKernel::str() const {
+  return "("
+    + inputs_[0]->get_value().str()
+    + " - "
+    + inputs_[1]->get_value().str()
+    +  ")";
 }
 
 
-Mul::Mul(Node::ptr a, Node::ptr b)
-  : a_(a), b_(b) { }
-
-void Mul::forward() {
-  value_ = a_->value().mul(b_->value());
+void MulKernel::forward() {
+  value_ = inputs_[0]->get_value().mul(inputs_[1]->get_value());
 }
 
-void Mul::backward(const NDArray& suc_gradient,
-    std::unordered_map<Node::ptr, NDArray>& gradients) const {
-  if (gradients.empty()) {
-    gradients[a_] = NDArray(b_->value().shape());
-    gradients[b_] = NDArray(a_->value().shape());
+void MulKernel::backward(const NDArray& output_grad) {
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(inputs_[1]->get_value().shape());
+    gradients_[inputs_[1]].zeros(inputs_[0]->get_value().shape());
   }
 
-  gradients[a_].add_(b_->value().mul(suc_gradient));
-  gradients[b_].add_(a_->value().mul(suc_gradient));
+  gradients_[inputs_[0]].add_(inputs_[1]->get_value().mul(output_grad));
+  gradients_[inputs_[1]].add_(inputs_[0]->get_value().mul(output_grad));
 }
 
-std::string Mul::str() const {
-  return "(" + a_->value().str() + " * " + b_->value().str() + ")";
+std::string MulKernel::str() const {
+  return "("
+    + inputs_[0]->get_value().str()
+    + " * "
+    + inputs_[1]->get_value().str()
+    + ")";
 }
 
-Dot::Dot(Node::ptr a, Node::ptr b)
-  : a_(a), b_(b) { }
 
-void Dot::forward() {
-  value_ = a_->value().dot(b_->value());
+void DotKernel::forward() {
+  value_ = inputs_[0]->get_value().dot(inputs_[1]->get_value());
 }
 
-void Dot::backward(const NDArray& suc_gradient,
-    std::unordered_map<Node::ptr, NDArray>& gradients) const {
-  if (gradients.empty()) {
-    gradients[a_] = NDArray(b_->value().shape());
-    gradients[b_] = NDArray(a_->value().shape());
-  }
-  gradients[a_].add_(suc_gradient.dot(b_->value()));
-  gradients[b_].add_(a_->value().dot(suc_gradient));
-}
-
-std::string Dot::str() const {
-  return "(" + a_->value().str() + " dot " + b_->value().str() + ")";
-}
-
-MatMul::MatMul(Node::ptr a, Node::ptr b)
-  : a_(a), b_(b) { }
-
-void MatMul::forward() {
-  value_ = a_->value().mm(b_->value());
-}
-
-void MatMul::backward(const NDArray& suc_gradient,
-    std::unordered_map<Node::ptr, NDArray>& gradients) const {
-  if (gradients.empty()) {
-    gradients[a_] = NDArray(b_->value().shape());
-    gradients[b_] = NDArray(a_->value().shape());
+void DotKernel::backward(const NDArray& output_grad) {
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(inputs_[1]->get_value().shape());
+    gradients_[inputs_[1]].zeros(inputs_[0]->get_value().shape());
   }
 
-  auto a_t = a_->value().transpose();
-  auto b_t = b_->value().transpose();
-
-  gradients[a_].add_(suc_gradient.mm(b_t));
-  gradients[b_].add_(a_t.mm(suc_gradient));
+  gradients_[inputs_[0]].add_(output_grad.dot(inputs_[1]->get_value()));
+  gradients_[inputs_[1]].add_(inputs_[0]->get_value().dot(output_grad));
 }
 
-std::string MatMul::str() const {
-  return "(" + a_->value().str() + " mm " + b_->value().str() + ")";
+std::string DotKernel::str() const {
+  return "("
+    + inputs_[0]->get_value().str()
+    + " dot "
+    + inputs_[1]->get_value().str()
+    + ")";
+}
+
+
+void MatMulKernel::forward() {
+  value_ = inputs_[0]->get_value().mm(inputs_[1]->get_value());
+}
+
+void MatMulKernel::backward(const NDArray& output_grad) {
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(inputs_[1]->get_value().shape());
+    gradients_[inputs_[1]].zeros(inputs_[0]->get_value().shape());
+  }
+
+  auto a_t = inputs_[0]->get_value().transpose();
+  auto b_t = inputs_[1]->get_value().transpose();
+
+  gradients_[inputs_[0]].add_(output_grad.mm(b_t));
+  gradients_[inputs_[1]].add_(a_t.mm(output_grad));
+}
+
+std::string MatMulKernel::str() const {
+  return "("
+    + inputs_[0]->get_value().str()
+    + " mm "
+    + inputs_[1]->get_value().str()
+    + ")";
 }
 
 // Great explanation: 
 // http://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/
-Softmax::Softmax(Node::ptr node)
-  : node_(node) { }
-
-void Softmax::forward() {
-  value_ = node_->value();
+void SoftmaxKernel::forward() {
+  value_ = inputs_[0]->get_value();
   
   auto m = value_.max();
   value_.sub_(m).exp_();
@@ -157,20 +150,20 @@ void Softmax::forward() {
   }
 }
 
-void Softmax::backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const {
-  NDArray sg = suc_gradient;
+void SoftmaxKernel::backward(const NDArray& output_grad) {
+  NDArray og = output_grad;
   // todo: handle batches
-  // sg.unsqueeze(0);
+  // og.unsqueeze(0);
 
-  if (gradients.empty()) {
-    gradients[node_].zeros(sg.shape());
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(og.shape());
   }
-  gradients[node_].add_(sg.mm(derivative_));
+  gradients_[inputs_[0]].add_(og.mm(derivative_));
 }
 
-std::string Softmax::str() const {
-  return "softmax(" + node_->value().str() + ")";
+std::string SoftmaxKernel::str() const {
+  return "softmax("
+    + inputs_[0]->get_value().str()
+    + ")";
 }
-
 

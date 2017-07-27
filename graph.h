@@ -10,43 +10,127 @@
 
 #include "ndarray.h"
 
+class Node;
+class Graph;
+typedef std::shared_ptr<Node> NodeRef;
+typedef std::shared_ptr<Graph> GraphRef;
+class Op;
+typedef std::shared_ptr<Op> OpRef;
+class Variable;
+typedef std::shared_ptr<Variable> VariableRef;
+
 class Kernel;
+class ValueKernel;
+typedef std::shared_ptr<Kernel> KernelRef;
 
-class Node {
+class Node : public std::enable_shared_from_this<Node> {
   public:
-    typedef std::shared_ptr<Node> ptr;
+    virtual ~Node();   
+    
+    NodeRef ref();
+    GraphRef graph();
 
-    Node(std::unique_ptr<Kernel> kernel);
-    virtual ~Node() {}
-    Kernel& kernel() { return *kernel_.get(); } 
-    void eval();
-    const NDArray& value() const;
-    std::string str() const;
+    virtual KernelRef kernel() const = 0;
+    virtual bool requires_grad() const = 0;
+
+    const NDArray& get_value() const;
+    virtual std::string str() const;
 
   protected:
-    std::unique_ptr<Kernel> kernel_;
+    Node(GraphRef g);
+    Node(const Node&) = delete;
+
+    GraphRef graph_;
 };
+
+
+class Op : public Node {
+  protected:
+    struct protected_;
+
+  public:
+    explicit Op(const protected_&, GraphRef graph);
+    virtual ~Op();
+
+    OpRef ref();
+    operator NodeRef();
+
+    OpRef add(NodeRef other);
+    OpRef sub(NodeRef other);
+    OpRef mul(NodeRef other);
+    OpRef dot(NodeRef other);
+    OpRef mm(NodeRef other);
+    OpRef softmax();
+
+    virtual std::string str() const override;
+
+  protected:
+    virtual KernelRef kernel() const override {
+      return kernel_;
+    }
+    virtual bool requires_grad() const override {
+      return false;
+    }
+
+    struct protected_ {
+      explicit protected_(int) { }
+    };
+
+    
+  private:
+    Op(const Op&) = delete;
+    const Op& operator=(const Op&) = delete;
+    
+    void set_kernel(KernelRef kernel) {
+      kernel_ = kernel;
+    }
+
+    template <class K, class... Args>
+    OpRef op(const std::string& name, Args... args);
+
+    KernelRef kernel_;
+};
+
+class Variable : public Op {
+ public:
+    static VariableRef create(GraphRef graph, bool requires_grad=true); 
+    Variable(const Op::protected_&, GraphRef graph, bool requires_grad);
+    virtual ~Variable();
+  
+    VariableRef ref();
+    operator NodeRef();
+
+    void set_value(const NDArray& value);
+    virtual std::string str() const override;
+
+  protected:
+    virtual bool requires_grad() const override;
+    virtual KernelRef kernel() const override;
+
+  private:
+    Variable() = delete;
+    Variable(const Variable&) = delete;
+    const Variable& operator=(const Variable&) = delete;
+
+    std::shared_ptr<ValueKernel> kernel_;
+    bool requires_grad_;
+};
+
 
 class Graph {
   public:
-    Node::ptr var(NDArray value);
-    Node::ptr add(Node::ptr a, Node::ptr b);
-    Node::ptr sub(Node::ptr a, Node::ptr b);
-    Node::ptr mul(Node::ptr a, Node::ptr b);
-    Node::ptr dot(Node::ptr a, Node::ptr b);
-    Node::ptr mm(Node::ptr a, Node::ptr b);
-    Node::ptr softmax(Node::ptr node);
-
+    void add(NodeRef a);
     void eval();
-    NDArray gradient(const Node::ptr& node) const;
+    NDArray gradient(const NodeRef& node) const;
 
   protected:
-    std::unordered_map<Node::ptr, std::list<Node::ptr>> adj_;
-    std::unordered_map<Node::ptr, NDArray> gradients_;
+    std::unordered_map<NodeRef, std::list<NodeRef>> adj_;
+    std::unordered_map<NodeRef, NDArray> gradients_;
 };
 
-std::ostream& operator<<(std::ostream& os, const Node& node);
-std::ostream& operator<<(std::ostream& os, const Node::ptr& node);
+std::ostream& operator<<(std::ostream& os, const NodeRef& node);
+std::ostream& operator<<(std::ostream& os, const OpRef& node);
+std::ostream& operator<<(std::ostream& os, const VariableRef& node);
  
 #endif // _graph_h_
 

@@ -1,8 +1,6 @@
 #ifndef _kernel_h_
 #define _kernel_h_
 
-#include <list>
-#include <queue>
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -12,127 +10,120 @@
 
 class Kernel {
   public:
-    Kernel()
-      : value_({1}) { }
-
-    Kernel(NDArray value)
-      : value_(value) { }
-    
     virtual ~Kernel() { }
     virtual void forward() { }
-
-    virtual const NDArray& value() const {
+    virtual void backward(const NDArray& output_grad) { }
+  
+    const NDArray& get_value() const {
       return value_;
     }
+    
+    void set_inputs(std::vector<NodeRef>& inputs) {
+      inputs_.clear();
+      inputs_.insert(inputs_.end(), inputs.begin(), inputs.end());
+    }
 
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const { }
+    const std::vector<NodeRef>& get_inputs() const {
+      return inputs_;
+    }
+
+    const NDArray& get_gradient(const NodeRef& node) const {
+      static NDArray default_grad({1}, {0});
+
+      const auto& it = gradients_.find(node);
+      if (it != gradients_.end()) {
+        return it->second;
+      }
+
+      return default_grad;
+    }
 
     virtual std::string str() const {
-      return std::string();
+      return "kernel";
     }
 
   protected:
     NDArray value_;
+    std::vector<NodeRef> inputs_;
+    std::unordered_map<NodeRef, NDArray> gradients_;
 };
 
-
-class Value : public Kernel {
+class ValueKernel : public Kernel {
   public:
-    Value(NDArray value)
-      : Kernel(value) { }
+    void set_value(const NDArray& value) {
+      value_ = value;
+    }
 
+    virtual std::string str() const {
+      return value_.str();
+    }
+};
+
+class AddKernel : public Kernel {
+  public:
+    AddKernel() = default;
     virtual std::string str() const override;
-};
-
-
-class Add : public Kernel {
-  public:
-    Add(Node::ptr a, Node::ptr b);
     
+  protected:
     virtual void forward() override;
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
-
-    virtual std::string str() const override;
-
-  private:
-    Node::ptr a_;
-    Node::ptr b_;
+    virtual void backward(const NDArray& output_grad) override;
 };
 
 
-class Sub : public Kernel {
+class SubKernel : public Kernel {
   public:
-    Sub(Node::ptr a, Node::ptr b);
-    virtual void forward() override;
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
-
+    SubKernel() = default;
     virtual std::string str() const override;
-  private:
-    Node::ptr a_;
-    Node::ptr b_;
+
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
 };
 
 
-class Mul : public Kernel {
+class MulKernel : public Kernel {
   public:
-    Mul(Node::ptr a, Node::ptr b);
-
-    virtual void forward() override;
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
-
+    MulKernel() = default;
     virtual std::string str() const override;
 
-  private:
-    Node::ptr a_;
-    Node::ptr b_;
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
 };
 
 
-class Dot : public Kernel {
+class DotKernel : public Kernel {
   public:
-    Dot(Node::ptr a, Node::ptr b);
-    
-    virtual void forward() override;
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
-
+    DotKernel() = default;
     virtual std::string str() const override;
 
-  private:
-    Node::ptr a_;
-    Node::ptr b_;
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
 };
 
 
-class MatMul : public Kernel {
+class MatMulKernel : public Kernel {
   public:
-    MatMul(Node::ptr a, Node::ptr b);
-    
-    virtual void forward() override;
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
-
+    MatMulKernel() = default;
     virtual std::string str() const override;
 
-  private:
-    Node::ptr a_;
-    Node::ptr b_;
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
 };
 
-class Softmax : public Kernel {
+
+class SoftmaxKernel : public Kernel {
   public:
-    Softmax(Node::ptr node);
-    virtual void forward() override;
-    virtual void backward(const NDArray& suc_gradient,
-        std::unordered_map<Node::ptr, NDArray>& gradients) const override;
+    SoftmaxKernel() = default;
     virtual std::string str() const override;
 
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
+
   private:
-    Node::ptr node_;
     NDArray derivative_;
 };
 
