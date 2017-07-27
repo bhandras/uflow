@@ -2,7 +2,6 @@
 #define _graph_h_
 
 #include <list>
-#include <queue>
 #include <vector>
 #include <memory>
 #include <ostream>
@@ -10,18 +9,19 @@
 
 #include "ndarray.h"
 
+
 class Node;
 class Graph;
-typedef std::shared_ptr<Node> NodeRef;
-typedef std::shared_ptr<Graph> GraphRef;
 class Op;
-typedef std::shared_ptr<Op> OpRef;
 class Variable;
-typedef std::shared_ptr<Variable> VariableRef;
-
 class Kernel;
 class ValueKernel;
+typedef std::shared_ptr<Node> NodeRef;
+typedef std::shared_ptr<Graph> GraphRef;
+typedef std::shared_ptr<Op> OpRef;
+typedef std::shared_ptr<Variable> VariableRef;
 typedef std::shared_ptr<Kernel> KernelRef;
+
 
 class Node : public std::enable_shared_from_this<Node> {
   public:
