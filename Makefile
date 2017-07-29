@@ -1,6 +1,6 @@
 CXX := clang++
 CXXFLAGS := -std=c++1y -Wall
-TARGET := test
+TARGET := uflow
 
 all:
 	$(CXX) $(CXXFLAGS) *.cpp -o $(TARGET)

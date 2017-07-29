@@ -123,37 +123,73 @@ std::string MatMulKernel::str() const {
 void SoftmaxKernel::forward() {
   value_ = inputs_[0]->get_value();
   
+  Shape shape(value_.shape());
+  bool invalid = false;
+
+  if (shape.size() != 2 && shape.size() != 3) {
+    invalid = true;
+  }
+
+  bool is_row_vec = shape.is_row_vector();
+  bool is_col_vec = shape.is_column_vector();
+
+  if (!is_row_vec && !is_col_vec) {
+    invalid = true;
+  }
+
+  if (invalid) {
+    throw ValueError("Incompatible shape for softmax: " + vstr(shape.v()));
+  }
+
+  // make sure we're dealing with column vectors
+  if (is_row_vec) {
+    shape.swap(-2, -1);
+    value_.reshape(shape.v());
+  }
+
   auto m = value_.max();
   value_.sub_(m).exp_();
   value_.mul_(value_.sum().recip_());
 
-  // todo: at the moment we suppose that value_ is a row vector
-  size_t d1 = value_.shape()[0];
-  size_t d2 = value_.shape()[1];
-  // todo: handle batches
-  // derivative_.zeros({d1, d2, d2});
-  derivative_.zeros({d2, d2});
+  // number of batches
+  size_t nb = shape.size() == 3 ? shape[0] : 0;
+  size_t count = nb > 0 ? nb : 1;
+  size_t js = shape[-2]; // size of the Jacobian
 
-  for (size_t d = 0; d < d1; ++d) {
-    for (size_t i = 0; i < d2; ++i) {
-      for (size_t j = 0; j < d2; ++j) {
+  derivative_.zeros({count, js, js});
+  if (nb == 0) {
+    value_.unsqueeze(0);
+  }
+
+  for (size_t b = 0; b < count; ++b) { // batch
+    for (size_t i = 0; i < js; ++i) { // Jacobian row
+      for (size_t j = 0; j < js; ++j) { // Jacobian col
         if (i == j) {
-          float v_i = value_.get({d, i});
-          derivative_.set({i, j}, v_i * (1.0f - v_i));
+          float v_i = value_.get({b, i, 0});
+          float val = v_i * (1.0f - v_i);
+          derivative_.set({b, i, i}, val);
         } else {
-          float v_i = value_.get({d, i});
-          float v_j = value_.get({d, j});
-          derivative_.set({i, j}, -v_i * v_j);
+          float v_i = value_.get({b, i, 0});
+          float v_j = value_.get({b, j, 0});
+          derivative_.set({b, i, j}, -v_i * v_j);
         }
       }
     }
+  }
+
+  if (nb == 0) {
+    derivative_.squeeze(0);
+    value_.squeeze(0);
+  }
+
+  if (is_row_vec) {
+    shape.swap(-1, -2);
+    value_.reshape(shape.v());
   }
 }
 
 void SoftmaxKernel::backward(const NDArray& output_grad) {
   NDArray og = output_grad;
-  // todo: handle batches
-  // og.unsqueeze(0);
 
   if (gradients_.empty()) {
     gradients_[inputs_[0]].zeros(og.shape());
