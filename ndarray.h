@@ -23,6 +23,18 @@ class Shape {
       v_.insert(v_.end(), l.begin(), l.end());
     }
 
+    Shape(const std::vector<size_t>& shape) {
+      if (shape.size() > max_size) {
+        throw RuntimeError("Max shape is: "
+            + std::to_string(max_size));
+      }
+      v_.insert(v_.end(), shape.begin(), shape.end());
+    }
+
+    size_t size() const {
+      return v_.size();
+    }
+
     bool operator==(const Shape& other) const {
       return v_ == other.v_;
     }
@@ -32,13 +44,11 @@ class Shape {
     }
 
     size_t operator[](int index) const {
-      if (std::abs(index) >= v_.size()) {
-        throw RuntimeError("Shape::[] index out of bounds: "
-            + std::to_string(index));
-      }
+      return v_[get_index(index)];
+    }
 
-      size_t offset = index < 0 ? v_.size() : 0;
-      return v_[offset + index];
+    void swap(int d1, int d2) {
+      std::swap(v_[get_index(d1)], v_[get_index(d2)]);
     }
 
     bool is_row_vector() const {
@@ -59,7 +69,22 @@ class Shape {
       return false;
     }
 
+    const std::vector<size_t> v() const {
+      return v_;
+    }
+
   private:
+    int get_index(int index) const {
+      if ((index > 0 && index >= v_.size()) ||
+          (index < 0 && -index > v_.size())) {
+        throw RuntimeError("Shape::[] index out of bounds: "
+            + std::to_string(index));
+      }
+
+      int offset = index < 0 ? v_.size() : 0;
+      return offset + index;
+    }
+
     std::vector<size_t> v_;
 };
 
@@ -77,6 +102,20 @@ class NDArray {
           arr_[i] = init[i % init.size()];  
         }
       }
+    }
+
+    void squeeze(size_t dim) {
+      if (shape_.empty() ||
+          dim > shape_.size() ||
+          shape_[dim] != 1) {
+        throw RuntimeError("cannot unsqueeze "
+            + vstr(shape_)
+            + " at "
+            + std::to_string(dim));
+      }
+
+      shape_.erase(shape_.begin() + dim);
+      update_shape();
     }
 
     void unsqueeze(size_t dim) {
@@ -327,7 +366,10 @@ class NDArray {
       for (size_t i = 0; i < shape_.size(); ++i) {
         if (shape_[i] <= index[i]) {
           // todo: better exception for out of bounds
-          throw RuntimeError("NDArray::get: out of bounds");
+          throw RuntimeError("NDArray::get:"
+              + vstr(index)
+              + " out of bounds "
+              + vstr(shape_));
         }
       }
 
