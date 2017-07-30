@@ -189,12 +189,17 @@ void SoftmaxKernel::forward() {
 }
 
 void SoftmaxKernel::backward(const NDArray& output_grad) {
-  NDArray og = output_grad;
+  Shape og_shape(output_grad.shape());
 
   if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(og.shape());
+    gradients_[inputs_[0]].zeros(output_grad.shape());
   }
-  gradients_[inputs_[0]].add_(og.mm(derivative_));
+
+  if (og_shape.is_row_vector()) {
+    gradients_[inputs_[0]].add_(output_grad.mm(derivative_));
+  } else {
+    gradients_[inputs_[0]].add_(derivative_.mm(output_grad));
+  }
 }
 
 std::string SoftmaxKernel::str() const {
