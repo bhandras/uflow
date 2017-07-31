@@ -107,9 +107,9 @@ class DotKernel : public Kernel {
 };
 
 
-class MatMulKernel : public Kernel {
+class BatchMatMulKernel : public Kernel {
   public:
-    MatMulKernel() = default;
+    BatchMatMulKernel() = default;
     virtual std::string str() const override;
 
   protected:

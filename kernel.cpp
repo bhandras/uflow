@@ -93,11 +93,11 @@ std::string DotKernel::str() const {
 }
 
 
-void MatMulKernel::forward() {
-  value_ = inputs_[0]->get_value().mm(inputs_[1]->get_value());
+void BatchMatMulKernel::forward() {
+  value_ = inputs_[0]->get_value().bmm(inputs_[1]->get_value());
 }
 
-void MatMulKernel::backward(const NDArray& output_grad) {
+void BatchMatMulKernel::backward(const NDArray& output_grad) {
   if (gradients_.empty()) {
     gradients_[inputs_[0]].zeros(inputs_[1]->get_value().shape());
     gradients_[inputs_[1]].zeros(inputs_[0]->get_value().shape());
@@ -106,14 +106,14 @@ void MatMulKernel::backward(const NDArray& output_grad) {
   auto a_t = inputs_[0]->get_value().transpose();
   auto b_t = inputs_[1]->get_value().transpose();
 
-  gradients_[inputs_[0]].add_(output_grad.mm(b_t));
-  gradients_[inputs_[1]].add_(a_t.mm(output_grad));
+  gradients_[inputs_[0]].add_(output_grad.bmm(b_t));
+  gradients_[inputs_[1]].add_(a_t.bmm(output_grad));
 }
 
-std::string MatMulKernel::str() const {
+std::string BatchMatMulKernel::str() const {
   return "("
     + inputs_[0]->get_value().str()
-    + " mm "
+    + " bmm "
     + inputs_[1]->get_value().str()
     + ")";
 }
@@ -196,9 +196,9 @@ void SoftmaxKernel::backward(const NDArray& output_grad) {
   }
 
   if (og_shape.is_row_vector()) {
-    gradients_[inputs_[0]].add_(output_grad.mm(derivative_));
+    gradients_[inputs_[0]].add_(output_grad.bmm(derivative_));
   } else {
-    gradients_[inputs_[0]].add_(derivative_.mm(output_grad));
+    gradients_[inputs_[0]].add_(derivative_.bmm(output_grad));
   }
 }
 

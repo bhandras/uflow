@@ -5,7 +5,6 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
-#include <iostream>
 #include "util.h"
 #include "exception.h"
 
@@ -653,13 +652,30 @@ class NDArray {
     }
 
     NDArray bmm(const NDArray& other) const {
+      /*
+       * Valid combinations:
+       * - (m, n) * (n, k) = (1, m, k)
+       * - (m, n) * (b, n, k)  and  (b, m, n) * (n, k) = (b, m, k)
+       * - (1, m, n) * (b, n, k)  and  (b, m, n) * (1, n, k) = (1, m, k)
+       * - (b, m, n) * (b, n, k) = (b, m, k)
+       */
       // TODO: refactor shapes
       Shape shape1(shape_);
       Shape shape2(other.shape_);
+      
+      size_t s1 = shape1.size();
+      size_t s2 = shape2.size();
 
-      if (!((shape1.size() == 2 && shape2.size() == 3) ||
-            (shape1.size() == 3 && shape2.size() == 2)) ||
-          shape1[-1] != shape2[-2]) {
+      bool ok = (s1 == 2 || s1 == 3) && (s2 == 2 || s2 == 3) &&
+                (shape1[-1] == shape2[-2]);
+
+      if (ok && s1 == 3 && s2 == 3) {
+        size_t s1_0 = shape1[-3];
+        size_t s2_0 = shape2[-3];
+        ok = s1_0 == s2_0 || s1_0 == 1 || s2_0 == 1;
+      }
+
+      if (!ok) {
         throw IncompatibleShapes("NDArray::bmm", {shape1.v(), shape2.v()});
       }
 
@@ -668,12 +684,16 @@ class NDArray {
       size_t n = shape1[-1];
       size_t k = shape2[-1];
 
-      size_t count = shape1.size() == 3 ? shape1[0] : shape2[0];
+      size_t c1 = s1 == 3 ? shape1[0] : 1;
+      size_t c2 = s2 == 3 ? shape2[0] : 1;
+
+      size_t count = std::max(c1, c2);
+      
       NDArray res({count, m, k});
       
       for (size_t c = 0; c < count; ++c) {
-        auto A = &arr_[shape1.size() == 3 ? (c * m * n) : 0];
-        auto B = &other.arr_[shape2.size() == 3 ? (c * n * k) : 0];
+        auto A = &arr_[c1 > 1 ? (c * m * n) : 0];
+        auto B = &other.arr_[c2 > 1 ? (c * n * k) : 0];
         auto AB = &res.arr_[c * m * k];
 
         for (size_t i = 0; i < m; ++i) {

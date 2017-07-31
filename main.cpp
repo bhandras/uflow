@@ -9,20 +9,21 @@ OpRef Linear(OpRef x, const Shape& x_shape) {
   size_t major = is_col_vec ? x_shape[-2] : x_shape[-1];
   
   auto W = Variable::create(x->graph(), Shape({major, major}));
+  W->set_value(NDArray({major, major}, {-1, -2, -3, 4, -5, 6, 7, 8, 9}));
   auto b = Variable::create(x->graph(), is_col_vec ? Shape({major, 1}) : Shape({1, major}));
 
   if (is_col_vec) {
-    return W->mm(x)->add(b);
+    return W->bmm(x)->add(b);
   } else {
-    return x->mm(W)->add(b);
+    return x->bmm(W)->add(b);
   }
 }
 
 void test();
 
 int main() {
-  test();
-  return 0;
+  // test();
+  // return 0;
 
   GraphRef g = std::make_shared<Graph>();
   
@@ -31,10 +32,13 @@ int main() {
   auto l1 = Linear(X, {1, 3, 1});
   auto l1_relu = l1->relu();
   auto sm = l1->softmax();
+  auto dummy = sm->dot(sm);
 
-  X->set_value(NDArray({1, 3, 1}, {1, 2, 3}));
+  X->set_value(NDArray({1, 3, 1}, {-1, -2, -3}));
   g->eval();
-  
+  std::cout << l1->get_value() << std::endl;
+  std::cout << l1_relu->get_value() << std::endl;
+  std::cout << sm->get_value() << std::endl;
   return 0;
 }
 
@@ -107,15 +111,15 @@ void test() {
   */
 
   
-  NDArray a({3, 1}, {1, 2, 3});
+  NDArray a({1, 3, 1}, {1, 2, 3});
   NDArray b({1, 3}, {4, 5, 6});
   NDArray c({2, 1, 3}, {4, 5, 6, 7, 8, 9});
 
   std::cout << "a=" << std::endl << a << std::endl;
   std::cout << "b=" << std::endl << b << std::endl;
   std::cout << "c=" << std::endl << c << std::endl;
-  std::cout << "a mm b=" << std::endl << a.mm(b) << std::endl;
-  std::cout << "b mm a=" << std::endl << b.mm(a) << std::endl;
+  std::cout << "a mm b=" << std::endl << a.bmm(b) << std::endl;
+  std::cout << "b mm a=" << std::endl << b.bmm(a) << std::endl;
   std::cout << "a bmm c=" << std::endl << a.bmm(c) << std::endl;
   std::cout << "c bmm a=" << std::endl << c.bmm(a) << std::endl;
   
