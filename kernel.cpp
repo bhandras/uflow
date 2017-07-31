@@ -208,3 +208,21 @@ std::string SoftmaxKernel::str() const {
     + ")";
 }
 
+std::string ReLUKernel::str() const {
+  return "ReLU("
+    + inputs_[0]->get_value().str()
+    + ")";
+}
+
+void ReLUKernel::forward() {
+  value_ = inputs_[0]->get_value().max_filter(0.0f);
+}
+
+void ReLUKernel::backward(const NDArray& output_grad) {
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]] = value_;
+  }
+
+  gradients_[inputs_[0]].clip_(0.0f, 1.0f);
+}
+

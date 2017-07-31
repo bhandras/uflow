@@ -4,8 +4,37 @@
 #include "kernel.h"
 #include "ndarray.h"
 
+OpRef Linear(OpRef x, const Shape& x_shape) {
+  bool is_col_vec = x_shape.is_column_vector();
+  size_t major = is_col_vec ? x_shape[-2] : x_shape[-1];
+  
+  auto W = Variable::create(x->graph(), Shape({major, major}));
+  auto b = Variable::create(x->graph(), is_col_vec ? Shape({major, 1}) : Shape({1, major}));
+
+  if (is_col_vec) {
+    return W->mm(x)->add(b);
+  } else {
+    return x->mm(W)->add(b);
+  }
+}
+
 int main() {
   GraphRef g = std::make_shared<Graph>();
+  
+  auto X = Variable::create(g, {1, 3, 1});
+  
+  auto l1 = Linear(X, {1, 3, 1});
+  auto l1_relu = l1->relu();
+  auto sm = l1->softmax();
+
+  X->set_value(NDArray({1, 3, 1}, {1, 2, 3}));
+  g->eval();
+  
+  return 0;
+}
+
+
+void test() {
   /*
   auto arr = NDArray({5});
   std::cout << "---" << std::endl << arr << std::endl;
@@ -50,7 +79,8 @@ int main() {
   std::cout << "zz mul qq=" << zz.mul(qq) << std::endl;
   std::cout << "qq mul zz=" << qq.mul(zz) << std::endl;
   */
-
+  
+  /*
   auto x1 = Variable::create(g, {1, 3, 1});
   auto x2 = Variable::create(g, {1, 3, 1});
   
@@ -69,7 +99,8 @@ int main() {
   std::cout << "d=" << std::endl << d->get_value() << std::endl;
   std::cout << "grad x1=" << std::endl << g->gradient(x1) << std::endl;
   std::cout << "grad x2=" << std::endl << g->gradient(x2) << std::endl;
-  
+  */
+
   /*
   NDArray a({3, 1}, {1, 2, 3});
   NDArray b({1, 3}, {4, 5, 6});
@@ -103,5 +134,4 @@ int main() {
   xx.unsqueeze(0);
   std::cout << xx << std::endl;
   */
-  return 0;
 }

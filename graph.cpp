@@ -91,6 +91,10 @@ OpRef Op::softmax() {
   return op<SoftmaxKernel>("softmax");
 }
 
+OpRef Op::relu() {
+  return op<ReLUKernel>("relu");
+}
+
 std::string Op::str() const {
   return "op: {\n"
     + kernel_->str()
@@ -101,14 +105,14 @@ std::string Op::str() const {
 
 
 VariableRef Variable::create(GraphRef graph,
-    const std::vector<size_t>& shape, bool requires_grad/* = true */) {
+    const Shape& shape, bool requires_grad/* = true */) {
   return std::make_shared<Variable>(Op::protected_{0}, graph, shape, requires_grad); 
 }
 
 Variable::Variable(const Op::protected_& p, GraphRef graph,
-    const std::vector<size_t>& shape, bool requires_grad)
+    const Shape& shape, bool requires_grad)
   : Op(p, graph)
-  , kernel_(std::make_shared<ValueKernel>())
+  , kernel_(std::make_shared<ValueKernel>(shape))
   , shape_(shape)
   , requires_grad_(requires_grad) { }
 
@@ -120,6 +124,14 @@ VariableRef Variable::ref() {
 
 Variable::operator NodeRef() {
   return Node::ref();
+}
+
+Variable::operator OpRef() {
+  return Op::ref();
+}
+
+const Shape& Variable::shape() const {
+  return shape_;
 }
 
 void Variable::set_value(const NDArray& value) {
@@ -140,7 +152,8 @@ void Variable::set_value(const NDArray& value) {
     }
 
     if (!ok) {
-      throw IncompatibleShapes("set_value", {shape1, shape2});
+      // TODO
+      throw IncompatibleShapes("set_value", {shape1.v(), shape2});
     }
   }
 

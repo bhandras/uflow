@@ -43,6 +43,10 @@ class Shape {
       return v_ == other;
     }
 
+    bool operator !=(const Shape& other) const {
+      return v_ != other.v_;
+    }
+
     size_t operator[](int index) const {
       return v_[get_index(index)];
     }
@@ -383,7 +387,7 @@ class NDArray {
 
     NDArray max() const {
       if (arr_.empty()) {
-        throw RuntimeError("maximum on zero-size array");
+        throw RuntimeError("NDArray::max on zero-size array");
       }
 
       auto res = NDArray({1});
@@ -392,6 +396,31 @@ class NDArray {
       }
 
       return res;
+    }
+
+    NDArray max_filter(float x) const {
+      if (arr_.empty()) {
+        throw RuntimeError("NDArray::max_filter on zero-size array");
+      }
+
+      NDArray res(shape());
+      for (auto i = 0; i < res.arr_.size(); ++i) {
+        res.arr_[i] = arr_[i] >= x ? arr_[i] : x;
+      }
+
+      return res;
+    }
+
+    NDArray& clip_(float min, float max) {
+      if (arr_.empty()) {
+        throw RuntimeError("NDArray::clip_ on zero-size array");
+      }
+
+      for (auto& val : arr_) {
+        val = std::min(std::max(val, min), max);
+      }
+
+      return *this;
     }
 
     NDArray exp() const {

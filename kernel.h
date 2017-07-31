@@ -50,6 +50,10 @@ class Kernel {
 
 class ValueKernel : public Kernel {
   public:
+    ValueKernel(const Shape& shape) {
+      // TODO
+      value_.zeros(shape.v());
+    }
     void set_value(const NDArray& value) {
       value_ = value;
     }
@@ -125,6 +129,17 @@ class SoftmaxKernel : public Kernel {
 
   private:
     NDArray derivative_;
+};
+
+
+class ReLUKernel : public Kernel {
+  public:
+    ReLUKernel() = default;
+    virtual std::string str() const override;
+
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
 };
 
 #endif // _kernel_h_

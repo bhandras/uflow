@@ -61,6 +61,7 @@ class Op : public Node {
     OpRef dot(NodeRef other);
     OpRef mm(NodeRef other);
     OpRef softmax();
+    OpRef relu();
 
     virtual std::string str() const override;
 
@@ -94,16 +95,18 @@ class Op : public Node {
 class Variable : public Op {
  public:
     static VariableRef create(GraphRef graph,
-        const std::vector<size_t>& shape, bool requires_grad=true);
+        const Shape& shape, bool requires_grad=true);
 
     Variable(const Op::protected_&, GraphRef graph,
-        const std::vector<size_t>& shape, bool requires_grad);
+        const Shape& shape, bool requires_grad);
 
     virtual ~Variable();
   
     VariableRef ref();
+    operator OpRef();
     operator NodeRef();
 
+    const Shape& shape() const;
     void set_value(const NDArray& value);
     virtual std::string str() const override;
 
@@ -117,7 +120,7 @@ class Variable : public Op {
     const Variable& operator=(const Variable&) = delete;
 
     std::shared_ptr<ValueKernel> kernel_;
-    std::vector<size_t> shape_;
+    Shape shape_;
     bool requires_grad_;
 };
 
