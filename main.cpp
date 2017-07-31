@@ -18,7 +18,12 @@ OpRef Linear(OpRef x, const Shape& x_shape) {
   }
 }
 
+void test();
+
 int main() {
+  test();
+  return 0;
+
   GraphRef g = std::make_shared<Graph>();
   
   auto X = Variable::create(g, {1, 3, 1});
@@ -101,15 +106,20 @@ void test() {
   std::cout << "grad x2=" << std::endl << g->gradient(x2) << std::endl;
   */
 
-  /*
+  
   NDArray a({3, 1}, {1, 2, 3});
   NDArray b({1, 3}, {4, 5, 6});
+  NDArray c({2, 1, 3}, {4, 5, 6, 7, 8, 9});
 
-  std::cout << "a=" << a << std::endl;
-  std::cout << "b=" << b << std::endl;
-  std::cout << "a mm b=" << a.mm(b) << std::endl;
-  std::cout << "b mm a=" << b.mm(a) << std::endl;
-
+  std::cout << "a=" << std::endl << a << std::endl;
+  std::cout << "b=" << std::endl << b << std::endl;
+  std::cout << "c=" << std::endl << c << std::endl;
+  std::cout << "a mm b=" << std::endl << a.mm(b) << std::endl;
+  std::cout << "b mm a=" << std::endl << b.mm(a) << std::endl;
+  std::cout << "a bmm c=" << std::endl << a.bmm(c) << std::endl;
+  std::cout << "c bmm a=" << std::endl << c.bmm(a) << std::endl;
+  
+  /*
   NDArray c({2, 1, 3}, {1, 2, 3});
   NDArray d({2, 1, 3}, {4, 5, 6});
 

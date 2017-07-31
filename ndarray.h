@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
+#include <iostream>
 #include "util.h"
 #include "exception.h"
 
@@ -614,51 +615,74 @@ class NDArray {
     }
 
     NDArray mm(const NDArray& other) const {
-      if (shape_.size() != other.shape_.size()) {
-        throw IncompatibleShapes("NDArray::mm", {shape_, other.shape_});
+      // TODO: refactor shapes
+      Shape shape1(shape_);
+      Shape shape2(other.shape_);
+
+      if (shape1.size() != 2 ||
+          shape2.size() != 2 ||
+          shape1[-1] != shape2[-2]) {
+        throw IncompatibleShapes("NDArray::mm", {shape1.v(), shape2.v()});
       }
 
-      size_t ndim = shape_.size();
-      if (ndim >= 2 && shape_[ndim - 1] != other.shape_[ndim - 2]) {
-        throw IncompatibleShapes("NDArray::mm", {shape_, other.shape_});
-      }
+      // A=(m, n) B=(n, k) AB=(m, k)
+      size_t m = shape1[-2];
+      size_t n = shape1[-1];
+      size_t k = shape2[-1];
+      
+      NDArray res({m, k});
+      
+      auto& A = arr_;
+      auto& B = other.arr_;
+      auto& AB = res.arr_;
 
-      if (ndim > 2) {
-        for (size_t i = 0; i < ndim - 2; ++i) {
-          if (shape_[i] != other.shape_[i]) {
-            throw IncompatibleShapes("NDArray::mm", {shape_, other.shape_});
+      for (size_t i = 0; i < m; ++i) {
+        for (size_t j = 0; j < k; ++j) {
+
+          auto& AB_ij = AB[i * k + j];
+          auto A_i = &A[i * n];
+          auto B_j = &B[j];
+
+          for (size_t l = 0; l < n; ++l) {
+            AB_ij += A_i[l] * B_j[l * k];
           }
         }
       }
 
-      // matrix mul
-      std::vector<size_t> res_shape(shape_);
-      res_shape[ndim - 1] = other.shape_[ndim - 1]; 
-      NDArray res(res_shape);
+      return res;
+    }
 
-      size_t count = 1;
-      for (size_t i = 0; i < ndim - 2; ++i) {
-        count *= shape_[i];
+    NDArray bmm(const NDArray& other) const {
+      // TODO: refactor shapes
+      Shape shape1(shape_);
+      Shape shape2(other.shape_);
+
+      if (!((shape1.size() == 2 && shape2.size() == 3) ||
+            (shape1.size() == 3 && shape2.size() == 2)) ||
+          shape1[-1] != shape2[-2]) {
+        throw IncompatibleShapes("NDArray::bmm", {shape1.v(), shape2.v()});
       }
 
-      size_t m = shape_[ndim - 2];
-      size_t n = shape_[ndim - 1];
-      size_t k = other.shape_[ndim - 1];
-      size_t stride = m * k;
+      // A=(?, m, n) B=(?, n, k) AB=(?, m, k)
+      size_t m = shape1[-2];
+      size_t n = shape1[-1];
+      size_t k = shape2[-1];
 
-      for (int c = 0; c < count; ++c) {
-        size_t offset = c * stride;
-        auto A = &arr_[offset];
-        auto B = &other.arr_[offset];
-        auto AB = &res.arr_[offset];
+      size_t count = shape1.size() == 3 ? shape1[0] : shape2[0];
+      NDArray res({count, m, k});
+      
+      for (size_t c = 0; c < count; ++c) {
+        auto A = &arr_[shape1.size() == 3 ? (c * m * n) : 0];
+        auto B = &other.arr_[shape2.size() == 3 ? (c * n * k) : 0];
+        auto AB = &res.arr_[c * m * k];
 
         for (size_t i = 0; i < m; ++i) {
           for (size_t j = 0; j < k; ++j) {
-            
+
             auto& AB_ij = AB[i * k + j];
             auto A_i = &A[i * n];
             auto B_j = &B[j];
-            
+
             for (size_t l = 0; l < n; ++l) {
               AB_ij += A_i[l] * B_j[l * k];
             }
