@@ -386,7 +386,8 @@ class NDArray {
      return  arr_[pos];
     }
 
-    NDArray reduce(std::function<void(float&, const float&)> op, int axis, bool keep_dims) const {
+    NDArray reduce(std::function<void(float&, const float&)> op,
+        int axis, bool keep_dims, float init) const {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::reduce on zero-size array");
       }
@@ -405,7 +406,7 @@ class NDArray {
         }
 
         auto res = NDArray(shape);
-        res.arr_[0] = std::numeric_limits<float>::min();
+        res.arr_[0] = init;
         for (auto i = 1; i < arr_.size(); ++i) {
           op(res.arr_[0], arr_[i]);
         }
@@ -424,8 +425,8 @@ class NDArray {
       auto stride = strides_[axis];
       if (stride == 1) {
         for (size_t i = 0; i < res.arr_.size(); i++) {
+          res.arr_[1] = init;
 
-          res.arr_[1] = std::numeric_limits<float>::min();
           for (size_t j = i*shape_[axis]; j < (i+1)*shape_[axis]; ++j) {
             op(res.arr_[i], arr_[j]);
           }
@@ -434,8 +435,8 @@ class NDArray {
         int pos = 0;
         for (size_t i = 0; i < res.arr_.size(); i++) {
           int offs = stride * (i / stride) + i;
+          res.arr_[pos] = init;
 
-          res.arr_[pos] = std::numeric_limits<float>::min();
           for (size_t j = 0; j < shape_[axis]; ++j) {
             op(res.arr_[pos], arr_[offs + j * stride]);
           }
@@ -452,7 +453,7 @@ class NDArray {
       }
       return reduce([](float& x, const float& y) {
             x = std::max(x, y);
-          }, axis, keep_dims);
+          }, axis, keep_dims, std::numeric_limits<float>::min());
     }
 
     NDArray reduce_sum(int axis=-1, bool keep_dims=false) const {
@@ -461,7 +462,7 @@ class NDArray {
       }
       return reduce([](float& x, const float& y) {
           x += y;
-          }, axis, keep_dims);
+          }, axis, keep_dims, 0.0f);
     }
 
     NDArray max_filter(float x) const {
