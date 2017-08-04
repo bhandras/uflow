@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <algorithm>
+#include <iostream>
 #include "util.h"
 #include "exception.h"
 
@@ -435,6 +436,18 @@ class NDArray {
       return *this;
     }
 
+    NDArray log() const {
+      auto tmp = *this;
+      return tmp.log_();
+    }
+
+    NDArray& log_() {
+      for (auto& val : arr_) {
+        val = std::log(val);
+      }
+      return *this;
+    }
+
     NDArray recip() const {
       auto tmp = *this;
       return tmp.recip_();
@@ -452,14 +465,40 @@ class NDArray {
       return *this;
     }
     
-    NDArray sum() const {
+    NDArray sum(int axis=-1) const {
       if (arr_.empty()) {
         throw RuntimeError("sum on zero-size array");
       }
 
-      auto res = NDArray({1});
-      for (auto val : arr_) {
-        res.arr_[0] += val;
+      if (axis == -1) {
+        auto res = NDArray({1});
+        for (auto val : arr_) {
+          res.arr_[0] += val;
+        }
+
+        return res;
+      }
+      
+      auto shape = shape_;
+      shape.erase(shape.begin() + axis);
+      NDArray res(shape);
+
+      auto stride = strides_[axis];
+      if (stride == 1) {
+        for (size_t i = 0; i < res.arr_.size(); i++) {
+          for (size_t j = i*shape_[axis]; j < (i+1)*shape_[axis]; ++j) {
+            res.arr_[i] += arr_[j];
+          }
+        }
+      } else {
+        int pos = 0;
+        for (size_t i = 0; i < res.arr_.size(); i++) {
+          int offs = stride * (i / stride) + i;
+          for (size_t j = 0; j < shape_[axis]; ++j) {
+            res.arr_[pos] += arr_[offs + j * stride];
+          }
+          pos++;
+        }
       }
 
       return res;

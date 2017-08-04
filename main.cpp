@@ -22,6 +22,19 @@ OpRef Linear(OpRef x, const Shape& x_shape) {
 void test();
 
 int main() {
+  NDArray x;
+  x.arange(36);
+  x.reshape({3, 2, 2, 3});
+  auto y = x.sum(0);
+  auto z = x.sum(1);
+  auto w = x.sum(2);
+  std::cout << "x=" << std::endl << x << std::endl;
+  std::cout << "y=" << std::endl << x.sum(0) << std::endl;
+  std::cout << "z=" << std::endl << x.sum(1) << std::endl;
+  std::cout << "w=" << std::endl << x.sum(2) << std::endl;
+  std::cout << "w=" << std::endl << x.sum(3) << std::endl;
+  return 0;
+  
   // test();
   // return 0;
 
