@@ -25,32 +25,36 @@ int main() {
   NDArray x;
   x.arange(36);
   x.reshape({3, 2, 2, 3});
-  auto y = x.sum(0);
-  auto z = x.sum(1);
-  auto w = x.sum(2);
   std::cout << "x=" << std::endl << x << std::endl;
-  std::cout << "y=" << std::endl << x.sum(0) << std::endl;
-  std::cout << "z=" << std::endl << x.sum(1) << std::endl;
-  std::cout << "w=" << std::endl << x.sum(2) << std::endl;
-  std::cout << "w=" << std::endl << x.sum(3) << std::endl;
-  return 0;
+  std::cout << "x.sum(0)\n" << x.reduce_sum(0) << std::endl;
+  std::cout << "x.sum(1)\n" << x.reduce_sum(1) << std::endl;
+  std::cout << "x.sum(2)\n" << x.reduce_sum(2) << std::endl;
+  std::cout << "x.sum(3)\n" << x.reduce_sum(3) << std::endl;
+  std::cout << "----------------------------" << std::endl;
+  
+  std::cout << "x.max(0)=\n" << x.reduce_max(0) << std::endl;
+  std::cout << "x.max(1)=\n" << x.reduce_max(1) << std::endl;
+  std::cout << "x.max(2)=\n" << x.reduce_max(2) << std::endl;
+  //return 0;
   
   // test();
   // return 0;
 
   GraphRef g = std::make_shared<Graph>();
   
-  auto X = Variable::create(g, {1, 3, 1});
+  auto X = Variable::create(g, {2, 3, 1});
   
-  auto l1 = Linear(X, {1, 3, 1});
-  auto l1_relu = l1->relu();
-  auto sm = l1->softmax();
+  //auto l1 = Linear(X, {2, 3, 1});
+  //auto l1_relu = l1->relu();
+  //auto sm = l1->softmax();
+  
+  auto sm = X->softmax();
   auto dummy = sm->dot(sm);
-
-  X->set_value(NDArray({1, 3, 1}, {-1, -2, -3}));
+    
+  X->set_value(NDArray({2, 3, 1}, {-1, -2, -3, 5, 6, 7}));
   g->eval();
-  std::cout << l1->get_value() << std::endl;
-  std::cout << l1_relu->get_value() << std::endl;
+  //std::cout << l1->get_value() << std::endl;
+  //std::cout << l1_relu->get_value() << std::endl;
   std::cout << sm->get_value() << std::endl;
   return 0;
 }

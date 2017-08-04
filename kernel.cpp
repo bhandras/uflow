@@ -126,14 +126,18 @@ void SoftmaxKernel::forward() {
   Shape shape(value_.shape());
   bool invalid = false;
 
-  if (shape.size() != 2 && shape.size() != 3) {
-    invalid = true;
+  bool unsqueezed = false; 
+  if (shape.size() != 3) {
+    if (shape.size() == 2) {
+      value_.unsqueeze(2);
+      unsqueezed = true;
+    } else {
+      invalid = true;
+    }
   }
-
-  bool is_row_vec = shape.is_row_vector();
-  bool is_col_vec = shape.is_column_vector();
-
-  if (!is_row_vec && !is_col_vec) {
+  
+  if (!invalid && shape[-1] != 1 && shape[-2] != 1) {
+    // can only softmax(_, m, n) if m == 1 or n == 1
     invalid = true;
   }
 
@@ -141,27 +145,23 @@ void SoftmaxKernel::forward() {
     throw ValueError("Incompatible shape for softmax: " + vstr(shape.v()));
   }
 
+  bool swapped = false;
   // make sure we're dealing with column vectors
-  if (is_row_vec) {
+  if (shape[-1] != 1) {
     shape.swap(-2, -1);
     value_.reshape(shape.v());
   }
 
-  auto m = value_.max();
+  auto m = value_.reduce_max(1, true);
   value_.sub_(m).exp_();
-  value_.mul_(value_.sum().recip_());
+  value_.mul_(value_.reduce_sum(1, true).recip_());
 
-  // number of batches
-  size_t nb = shape.size() == 3 ? shape[0] : 0;
-  size_t count = nb > 0 ? nb : 1;
+  size_t nb = shape[0]; // number of batches
   size_t js = shape[-2]; // size of the Jacobian
 
-  derivative_.zeros({count, js, js});
-  if (nb == 0) {
-    value_.unsqueeze(0);
-  }
+  derivative_.zeros({nb, js, js});
 
-  for (size_t b = 0; b < count; ++b) { // batch
+  for (size_t b = 0; b < nb; ++b) { // batch
     for (size_t i = 0; i < js; ++i) { // Jacobian row
       for (size_t j = 0; j < js; ++j) { // Jacobian col
         if (i == j) {
@@ -177,14 +177,13 @@ void SoftmaxKernel::forward() {
     }
   }
 
-  if (nb == 0) {
-    derivative_.squeeze(0);
-    value_.squeeze(0);
-  }
-
-  if (is_row_vec) {
+  if (swapped) {
     shape.swap(-1, -2);
     value_.reshape(shape.v());
+  }
+
+  if (unsqueezed) {
+    value_.squeeze(2);
   }
 }
 
@@ -204,6 +203,77 @@ void SoftmaxKernel::backward(const NDArray& output_grad) {
 
 std::string SoftmaxKernel::str() const {
   return "softmax("
+    + inputs_[0]->get_value().str()
+    + ")";
+}
+
+void SoftmaxCrossEntropyKernel::forward() {
+  value_ = inputs_[0]->get_value();
+
+  Shape shape(value_.shape());
+  bool invalid = false;
+
+  bool unsqueezed = false; 
+  if (shape.size() != 3) {
+    if (shape.size() == 2) {
+      value_.unsqueeze(2);
+      unsqueezed = true;
+    } else {
+      invalid = true;
+    }
+  }
+  
+  if (!invalid && shape[-1] != 1 && shape[-2] != 1) {
+    // can only softmax(_, m, n) if m == 1 or n == 1
+    invalid = true;
+  }
+
+  if (invalid) {
+    throw ValueError("Incompatible shape for softmax: " + vstr(shape.v()));
+  }
+
+  bool swapped = false;
+  // make sure we're dealing with column vectors
+  if (shape[-1] != 1) {
+    shape.swap(-2, -1);
+    value_.reshape(shape.v());
+  }
+
+  auto m = value_.reduce_max(1, true);
+  value_.sub_(m).exp_();
+  value_.mul_(value_.reduce_sum(1, true).recip_());
+  value_.log_().mul_(NDArray({1}, {-1}));
+  value_.mul_(inputs_[1]->get_value());
+
+  if (swapped) {
+    shape.swap(-1, -2);
+    value_.reshape(shape.v());
+  }
+
+  if (unsqueezed) {
+    value_.squeeze(2);
+  }
+
+  derivative_ = value_;
+  derivative_.sub_(inputs_[1]->get_value());
+}
+
+void SoftmaxCrossEntropyKernel::backward(const NDArray& output_grad) {
+  Shape og_shape(output_grad.shape());
+
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]].zeros(output_grad.shape());
+  }
+
+  if (og_shape.is_row_vector()) {
+    gradients_[inputs_[0]].add_(output_grad.bmm(derivative_));
+  } else {
+    gradients_[inputs_[0]].add_(derivative_.bmm(output_grad));
+  }
+}
+
+std::string SoftmaxCrossEntropyKernel::str() const {
+  return "softmax CE("
     + inputs_[0]->get_value().str()
     + ")";
 }

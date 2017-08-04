@@ -131,6 +131,18 @@ class SoftmaxKernel : public Kernel {
     NDArray derivative_;
 };
 
+class SoftmaxCrossEntropyKernel : public Kernel {
+  public:
+    SoftmaxCrossEntropyKernel() = default;
+    virtual std::string str() const override;
+
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
+
+  private:
+    NDArray derivative_;
+};
 
 class ReLUKernel : public Kernel {
   public:
