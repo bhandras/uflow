@@ -386,14 +386,45 @@ class NDArray {
      return  arr_[pos];
     }
 
-    NDArray max() const {
+    NDArray max(int axis = -1) const {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::max on zero-size array");
       }
 
-      auto res = NDArray({1});
-      for (auto i = 1; i < arr_.size(); ++i) {
-        res.arr_[0] = std::max(res.arr_[0], arr_[i]);
+      if (axis == -1) {
+        auto res = NDArray({1});
+        res.arr_[0] = std::numeric_limits<float>::min();
+        for (auto i = 1; i < arr_.size(); ++i) {
+          res.arr_[0] = std::max(res.arr_[0], arr_[i]);
+        }
+
+        return res;
+      }
+      
+      auto shape = shape_;
+      shape.erase(shape.begin() + axis);
+      NDArray res(shape);
+
+      auto stride = strides_[axis];
+      if (stride == 1) {
+        for (size_t i = 0; i < res.arr_.size(); i++) {
+
+          res.arr_[1] = std::numeric_limits<float>::min();
+          for (size_t j = i*shape_[axis]; j < (i+1)*shape_[axis]; ++j) {
+            res.arr_[i] = std::max(arr_[j], res.arr_[i]);
+          }
+        }
+      } else {
+        int pos = 0;
+        for (size_t i = 0; i < res.arr_.size(); i++) {
+          int offs = stride * (i / stride) + i;
+
+          res.arr_[pos] = std::numeric_limits<float>::min();
+          for (size_t j = 0; j < shape_[axis]; ++j) {
+            res.arr_[pos] = std::max(arr_[offs + j * stride], res.arr_[pos]);
+          }
+          pos++;
+        }
       }
 
       return res;
