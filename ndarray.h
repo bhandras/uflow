@@ -598,7 +598,7 @@ class NDArray {
       return *this;
     }
 
-    NDArray mul(float s) const {
+    NDArray muls(float s) const {
       auto tmp = *this;
       return tmp.muls_(s);
     }

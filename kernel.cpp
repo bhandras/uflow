@@ -260,9 +260,9 @@ void SoftmaxCrossEntropyKernel::forward() {
   auto p = x; // p = softmax(x)
 
   // calculate CE loss
-  x.log_().mul_(NDArray({1}, {-1}).mul_(y));
+  x.log_().mul_(y.muls(-1.0f));
   value_ = x.reduce_sum(1, false).reduce_sum();
-  value_.mul_(NDArray({1}, {1.0f / shape[0]}));
+  value_.divs_(shape[0]);
   // std::cout << "ce=\n" << value_ << std::endl;
  
   // calculaet derivative
