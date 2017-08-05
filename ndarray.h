@@ -591,6 +591,28 @@ class NDArray {
       return *this;
     }
 
+    NDArray& muls_(float s) {
+      for (auto& v : arr_) {
+        v *= s;
+      }
+      return *this;
+    }
+
+    NDArray mul(float s) const {
+      auto tmp = *this;
+      return tmp.muls_(s);
+    }
+
+    NDArray& divs_(float s) {
+      return muls_(1.0f / s);
+    }
+
+    NDArray divs(float s) {
+      auto tmp = *this;
+      float recip = 1.0f / s;
+      return tmp.muls_(recip);
+    }
+
     NDArray mul(const NDArray& other) const {
       auto tmp = *this;
       return tmp.mul_(other);

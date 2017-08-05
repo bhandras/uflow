@@ -1,65 +1,66 @@
 #include <iostream>
-
 #include "graph.h"
 #include "kernel.h"
 #include "ndarray.h"
 
-OpRef Linear(OpRef x, const Shape& x_shape) {
-  bool is_col_vec = x_shape.is_column_vector();
-  size_t major = is_col_vec ? x_shape[-2] : x_shape[-1];
-  
-  auto W = Variable::create(x->graph(), Shape({major, major}));
-  W->set_value(NDArray({major, major}, {-1, -2, -3, 4, -5, 6, 7, 8, 9}));
-  auto b = Variable::create(x->graph(), is_col_vec ? Shape({major, 1}) : Shape({1, major}));
+void test();
+std::vector<VariableRef> variables;
 
-  if (is_col_vec) {
-    return W->bmm(x)->add(b);
-  } else {
-    return x->bmm(W)->add(b);
+OpRef Linear(OpRef x, size_t inp_size, size_t out_size) {
+  auto W = Variable::create(x->graph(), Shape({1, inp_size, out_size}));
+  variables.push_back(W);
+  W->set_value(NDArray({1, inp_size, out_size},
+        random_vec<float>(inp_size * out_size, 0.0f, 1.0f)));
+
+  auto b = Variable::create(x->graph(), {1, 1, out_size});
+  variables.push_back(b);
+  b->set_value(NDArray({1, 1, out_size},
+        random_vec<float>(out_size, 0.0f, 1.0f)));
+
+  // std::cout << "W:\n" << W->get_value() << std::endl;
+  // std::cout << "b:\n" << b->get_value() << std::endl;
+
+  return x->bmm(W)->add(b);
+}
+
+void sgd(GraphRef g, float learning_rate) {
+  for (auto& var : variables) {
+    auto v = var->get_value();
+    const auto& batch_grad = g->gradient(var);
+
+    auto grad = g->gradient(var).reduce_sum(0).divs_(float(batch_grad.shape()[0]));
+    v.sub_(grad.muls_(learning_rate));
+    var->set_value(v);
   }
 }
 
-void test();
-
 int main() {
-  /*
-  NDArray x;
-  x.arange(36);
-  x.reshape({3, 2, 2, 3});
-  std::cout << "x=" << std::endl << x << std::endl;
-  std::cout << "x.sum(0)\n" << x.reduce_sum(0) << std::endl;
-  std::cout << "x.sum(1)\n" << x.reduce_sum(1) << std::endl;
-  std::cout << "x.sum(2)\n" << x.reduce_sum(2) << std::endl;
-  std::cout << "x.sum(3)\n" << x.reduce_sum(3) << std::endl;
-  std::cout << "----------------------------" << std::endl;
-  
-  std::cout << "x.max(0)=\n" << x.reduce_max(0) << std::endl;
-  std::cout << "x.max(1)=\n" << x.reduce_max(1) << std::endl;
-  std::cout << "x.max(2)=\n" << x.reduce_max(2) << std::endl;
-  //return 0;
-  */
-  
-  // test();
-  // return 0;
-
   GraphRef g = std::make_shared<Graph>();
   
-  auto X = Variable::create(g, {2, 3});
-  auto y = Variable::create(g, {2, 3});
+  auto X = Variable::create(g, {1, 3});
+  auto y = Variable::create(g, {1, 3});
 
-  //auto l1 = Linear(X, {2, 3, 1});
-  //auto l1_relu = l1->relu();
-  //auto sm = l1->softmax();
+  auto l1 = Linear(X, 3, 3)->relu();
+  auto l2 = Linear(l1, 3, 3)->relu();
+  auto loss = l2->softmax_ce(y);
+  auto pred = l2->softmax();
   
-  auto sm = X->softmax_ce(y);
-  //auto dummy = sm->dot(sm);
-    
-  X->set_value(NDArray({2, 3}, {1, 2, 3, 2, 4, 8}));
-  y->set_value(NDArray({2, 3}, {0, 1, 0, 0, 0, 1}));
-  g->eval();
-  //std::cout << l1->get_value() << std::endl;
-  //std::cout << l1_relu->get_value() << std::endl;
-  std::cout << sm->get_value() << std::endl;
+  int steps = 10;
+
+  for (int i = 0; i < steps; ++i) {
+    X->set_value(NDArray({2, 1, 3}, {1, 2, 3, 2, 4, 8}));
+    y->set_value(NDArray({2, 1, 3}, {0, 1, 0, 0, 0, 1}));
+    g->forward();
+    g->backward(loss);
+    //std::cout << "l1:\n" << l1->get_value() << std::endl;
+    //std::cout << "l2:\n" << l2->get_value() << std::endl;
+    //std::cout << "pred:\n" << pred->get_value() << std::endl;
+    std::cout << "loss: " << loss->get_value() << std::endl;
+    sgd(g, 0.01);
+    //std::cout << "---------------" << std::endl;
+  }
+
+  // std::cout << pred->get_value() << std::endl;
   return 0;
 }
 
@@ -131,7 +132,7 @@ void test() {
   std::cout << "grad x2=" << std::endl << g->gradient(x2) << std::endl;
   */
 
-  
+  /*
   NDArray a({1, 3, 1}, {1, 2, 3});
   NDArray b({1, 3}, {4, 5, 6});
   NDArray c({2, 1, 3}, {4, 5, 6, 7, 8, 9});
@@ -143,7 +144,8 @@ void test() {
   std::cout << "b mm a=" << std::endl << b.bmm(a) << std::endl;
   std::cout << "a bmm c=" << std::endl << a.bmm(c) << std::endl;
   std::cout << "c bmm a=" << std::endl << c.bmm(a) << std::endl;
-  
+  */
+
   /*
   NDArray c({2, 1, 3}, {1, 2, 3});
   NDArray d({2, 1, 3}, {4, 5, 6});
@@ -168,5 +170,21 @@ void test() {
   xx = NDArray();
   xx.unsqueeze(0);
   std::cout << xx << std::endl;
+  */
+
+  /*
+  NDArray x;
+  x.arange(36);
+  x.reshape({3, 2, 2, 3});
+  std::cout << "x=" << std::endl << x << std::endl;
+  std::cout << "x.sum(0)\n" << x.reduce_sum(0) << std::endl;
+  std::cout << "x.sum(1)\n" << x.reduce_sum(1) << std::endl;
+  std::cout << "x.sum(2)\n" << x.reduce_sum(2) << std::endl;
+  std::cout << "x.sum(3)\n" << x.reduce_sum(3) << std::endl;
+  std::cout << "----------------------------" << std::endl;
+  
+  std::cout << "x.max(0)=\n" << x.reduce_max(0) << std::endl;
+  std::cout << "x.max(1)=\n" << x.reduce_max(1) << std::endl;
+  std::cout << "x.max(2)=\n" << x.reduce_max(2) << std::endl;
   */
 }

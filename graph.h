@@ -128,12 +128,16 @@ class Variable : public Op {
 
 class Graph {
   public:
-    void add(NodeRef a);
-    void eval();
+    void add(NodeRef node);
+    
+    void forward();
+    void backward(NodeRef node);
+
     NDArray gradient(const NodeRef& node) const;
 
   protected:
     std::unordered_map<NodeRef, std::list<NodeRef>> adj_;
+    std::vector<NodeRef> top_order_;
     std::unordered_map<NodeRef, NDArray> gradients_;
 };
 

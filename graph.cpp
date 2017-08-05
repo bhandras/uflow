@@ -185,7 +185,7 @@ void Graph::add(NodeRef node) {
   }
 }
 
-void Graph::eval() {
+void Graph::forward() {
   std::unordered_map<NodeRef, int> input_cnt;
 
   for (const auto& item : adj_) {
@@ -212,13 +212,13 @@ void Graph::eval() {
     }
   }
 
-  std::vector<NodeRef> top_order;
+  top_order_.clear();
   int count = 0;
 
   while (!q.empty()) {
     auto node = q.front();
     q.pop();
-    top_order.push_back(node);
+    top_order_.push_back(node);
 
     for (const auto& u : adj_[node]) {
       if (--input_cnt[u] == 0) {
@@ -233,35 +233,47 @@ void Graph::eval() {
     throw RuntimeError("graph contains cycle");
   }
 
-  for (const auto& node : top_order) {
+  for (const auto& node : top_order_) {
     node->kernel()->forward();
   }
-  
+}
+ 
+
+void Graph::backward(NodeRef node) {
   gradients_.clear();
-  
-  for (size_t i = top_order.size(); i != 0; --i) {
-    auto node = top_order[i - 1];
-    auto kernel = node->kernel();
+ 
+  size_t i = top_order_.size();
+  for (; i != 0; --i) {
+    if (top_order_[i] == node) break;
+  }
+
+  if (i == 0) {
+    throw RuntimeError("cannot backprop from unknown node");
+  }
+
+  for (; i != 0; --i) {
+    auto curr_node = top_order_[i - 1];
+    auto kernel = curr_node->kernel();
     bool leaf_node = kernel->get_inputs().empty();
 
-    if (adj_[node].empty()) {
+    if (adj_[curr_node].empty()) {
       auto output_grad = NDArray({1}, {1});
       if (!leaf_node) {
         kernel->backward(output_grad);
       } else {
-        gradients_[node] = output_grad;
+        gradients_[curr_node] = output_grad;
       }
     } else {
-      for (auto& output_node : adj_[node]) {
-        auto output_grad = output_node->kernel()->get_gradient(node);
+      for (auto& output_node : adj_[curr_node]) {
+        auto output_grad = output_node->kernel()->get_gradient(curr_node);
         
         if (!leaf_node) {
           kernel->backward(output_grad);
         } else {
-          if (gradients_.count(node) == 0) {
-            gradients_[node] = output_grad;
+          if (gradients_.count(curr_node) == 0) {
+            gradients_[curr_node] = output_grad;
           } else {
-            gradients_[node].add_(output_grad);
+            gradients_[curr_node].add_(output_grad);
           }
 
         }
