@@ -2,33 +2,33 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-x1 = Variable(torch.FloatTensor([1, 2, 3]), requires_grad=True)
-x2 = Variable(torch.FloatTensor([4, 5, 6]), requires_grad=True)
+x1 = Variable(torch.FloatTensor([[1, 2, 3]]), requires_grad=False)
+x2 = Variable(torch.FloatTensor([[2, 4, 8]]), requires_grad=False)
+x3 = Variable(torch.FloatTensor([[1, 2, 3], [2, 4, 8]]), requires_grad=False)
 
-sm_x1 = F.softmax(x1)
-sm_x2 = F.softmax(x2)
+y1 = Variable(torch.LongTensor(1), requires_grad=False)
+y2 = Variable(torch.LongTensor(1), requires_grad=False)
+y3 = Variable(torch.LongTensor(2), requires_grad=False)
 
-print(sm_x1)
-print(sm_x2)
+y1[0] = 1
+y2[0] = 2
+y3[0] = 1
+y3[1] = 2
 
-d = sm_x1.dot(sm_x2)
-print('d', d)
-d.backward()
-print('x1 grad', x1.grad)
-print('x2 grad', x2.grad)
+loss = torch.nn.CrossEntropyLoss()
 
-'''
-w = Variable(torch.FloatTensor([[0, 1, 2], [3, 4, 5], [6, 7, 8]]))
+print(loss(x1, y1))
+print(loss(x2, y2))
+print(loss(x3, y3))
 
-t = w.mm(x1)
-print('t = w mm x1', t)
-m = x2 + t
-print('m = x2 + t', m)
-z = m.dot(x3)
-print('z = m dot x3', z)
-print(z)
-z.backward()
-print('x1.grad', x1.grad)
-print('x2.grad', x2.grad)
-print('x3.grad', x3.grad)
-'''
+# sm_x1 = F.softmax(x1)
+# sm_x2 = F.softmax(x2)
+# print(sm_x1)
+# print(sm_x2)
+# d = sm_x1.dot(sm_x2)
+# print('d', d)
+#d.backward()
+
+# output.backward()
+# print('x1 grad', x1.grad)
+# print('x2 grad', x2.grad)

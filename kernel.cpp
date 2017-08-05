@@ -208,15 +208,26 @@ std::string SoftmaxKernel::str() const {
 }
 
 void SoftmaxCrossEntropyKernel::forward() {
-  value_ = inputs_[0]->get_value();
+  // TODO: copy on write...
+  auto x = inputs_[0]->get_value();
+  auto y = inputs_[1]->get_value();
 
-  Shape shape(value_.shape());
+  if (x.shape() != y.shape()) {
+    throw ValueError("Incompatible input and target shapes for softmax CE: "
+        + vstr(x.shape())
+        + ", "
+        + vstr(y.shape()));
+  }
+
+  Shape shape(x.shape());
   bool invalid = false;
 
   bool unsqueezed = false; 
   if (shape.size() != 3) {
     if (shape.size() == 2) {
-      value_.unsqueeze(2);
+      x.unsqueeze(2);
+      y.unsqueeze(2);
+      shape.unsqueeze(2);
       unsqueezed = true;
     } else {
       invalid = true;
@@ -232,30 +243,39 @@ void SoftmaxCrossEntropyKernel::forward() {
     throw ValueError("Incompatible shape for softmax: " + vstr(shape.v()));
   }
 
+  value_ = x;
+
   bool swapped = false;
-  // make sure we're dealing with column vectors
+  // make sure we're dealing with column vector
   if (shape[-1] != 1) {
     shape.swap(-2, -1);
-    value_.reshape(shape.v());
+    x.reshape(shape.v());
+    y.reshape(shape.v());
+    swapped = true;
   }
 
-  auto m = value_.reduce_max(1, true);
-  value_.sub_(m).exp_();
-  value_.mul_(value_.reduce_sum(1, true).recip_());
-  value_.log_().mul_(NDArray({1}, {-1}));
-  value_.mul_(inputs_[1]->get_value());
+  auto max_x = x.reduce_max(1, true);
+  x.sub_(max_x).exp_();
+  x.mul_(x.reduce_sum(1, true).recip_());
+  auto p = x; // p = softmax(x)
+
+  // calculate CE loss
+  x.log_().mul_(NDArray({1}, {-1}).mul_(y));
+  value_ = x.reduce_sum(1, false).reduce_sum();
+  value_.mul_(NDArray({1}, {1.0f / shape[0]}));
+  // std::cout << "ce=\n" << value_ << std::endl;
+ 
+  // calculaet derivative
+  derivative_ = p.sub_(y);
 
   if (swapped) {
-    shape.swap(-1, -2);
-    value_.reshape(shape.v());
+    shape.swap(-2, -1);
+    derivative_.reshape(shape.v());
   }
-
+  
   if (unsqueezed) {
-    value_.squeeze(2);
+    derivative_.squeeze(2);
   }
-
-  derivative_ = value_;
-  derivative_.sub_(inputs_[1]->get_value());
 }
 
 void SoftmaxCrossEntropyKernel::backward(const NDArray& output_grad) {
@@ -265,11 +285,7 @@ void SoftmaxCrossEntropyKernel::backward(const NDArray& output_grad) {
     gradients_[inputs_[0]].zeros(output_grad.shape());
   }
 
-  if (og_shape.is_row_vector()) {
-    gradients_[inputs_[0]].add_(output_grad.bmm(derivative_));
-  } else {
-    gradients_[inputs_[0]].add_(derivative_.bmm(output_grad));
-  }
+  gradients_[inputs_[0]].add_(output_grad.mul(derivative_));
 }
 
 std::string SoftmaxCrossEntropyKernel::str() const {

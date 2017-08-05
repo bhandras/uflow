@@ -61,6 +61,7 @@ class Op : public Node {
     OpRef dot(NodeRef other);
     OpRef bmm(NodeRef other);
     OpRef softmax();
+    OpRef softmax_ce(NodeRef other);
     OpRef relu();
 
     virtual std::string str() const override;

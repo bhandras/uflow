@@ -52,6 +52,14 @@ class Shape {
       return v_[get_index(index)];
     }
 
+    void unsqueeze(int axis) {
+      v_.insert(v_.begin() + axis, 1);
+    }
+
+    void squeeze(int axis) {
+      v_.erase(v_.begin() + axis);
+    }
+
     void swap(int d1, int d2) {
       std::swap(v_[get_index(d1)], v_[get_index(d2)]);
     }
@@ -407,7 +415,7 @@ class NDArray {
 
         auto res = NDArray(shape);
         res.arr_[0] = init;
-        for (auto i = 1; i < arr_.size(); ++i) {
+        for (auto i = 0; i < arr_.size(); ++i) {
           op(res.arr_[0], arr_[i]);
         }
 

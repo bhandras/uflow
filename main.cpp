@@ -22,6 +22,7 @@ OpRef Linear(OpRef x, const Shape& x_shape) {
 void test();
 
 int main() {
+  /*
   NDArray x;
   x.arange(36);
   x.reshape({3, 2, 2, 3});
@@ -36,22 +37,25 @@ int main() {
   std::cout << "x.max(1)=\n" << x.reduce_max(1) << std::endl;
   std::cout << "x.max(2)=\n" << x.reduce_max(2) << std::endl;
   //return 0;
+  */
   
   // test();
   // return 0;
 
   GraphRef g = std::make_shared<Graph>();
   
-  auto X = Variable::create(g, {2, 3, 1});
-  
+  auto X = Variable::create(g, {2, 3});
+  auto y = Variable::create(g, {2, 3});
+
   //auto l1 = Linear(X, {2, 3, 1});
   //auto l1_relu = l1->relu();
   //auto sm = l1->softmax();
   
-  auto sm = X->softmax();
-  auto dummy = sm->dot(sm);
+  auto sm = X->softmax_ce(y);
+  //auto dummy = sm->dot(sm);
     
-  X->set_value(NDArray({2, 3, 1}, {-1, -2, -3, 5, 6, 7}));
+  X->set_value(NDArray({2, 3}, {1, 2, 3, 2, 4, 8}));
+  y->set_value(NDArray({2, 3}, {0, 1, 0, 0, 0, 1}));
   g->eval();
   //std::cout << l1->get_value() << std::endl;
   //std::cout << l1_relu->get_value() << std::endl;

@@ -65,6 +65,7 @@ template OpRef Op::op<MulKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<DotKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<BatchMatMulKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<SoftmaxKernel>(const std::string&);
+template OpRef Op::op<SoftmaxCrossEntropyKernel>(const std::string&, NodeRef);
  
 
 OpRef Op::add(NodeRef other) {
@@ -89,6 +90,10 @@ OpRef Op::bmm(NodeRef other) {
 
 OpRef Op::softmax() {
   return op<SoftmaxKernel>("softmax");
+}
+
+OpRef Op::softmax_ce(NodeRef other) {
+  return op<SoftmaxCrossEntropyKernel>("softmax ce", other);
 }
 
 OpRef Op::relu() {
