@@ -433,7 +433,7 @@ class NDArray {
       auto stride = strides_[axis];
       if (stride == 1) {
         for (size_t i = 0; i < res.arr_.size(); i++) {
-          res.arr_[1] = init;
+          res.arr_[i] = init;
 
           for (size_t j = i*shape_[axis]; j < (i+1)*shape_[axis]; ++j) {
             op(res.arr_[i], arr_[j]);
@@ -497,6 +497,20 @@ class NDArray {
 
       return *this;
     }
+
+    NDArray& minimum_(float a, float b) {
+      if (arr_.empty()) {
+        throw RuntimeError("NDArray::minimum_ on zero-size array");
+      }
+
+      for (auto& val : arr_) {
+        val = val <= a ? a : b;
+      }
+
+      return *this;
+    }
+
+
 
     NDArray exp() const {
       auto tmp = *this;

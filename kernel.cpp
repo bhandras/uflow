@@ -76,8 +76,8 @@ void DotKernel::forward() {
 
 void DotKernel::backward(const NDArray& output_grad) {
   if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(inputs_[1]->get_value().shape());
-    gradients_[inputs_[1]].zeros(inputs_[0]->get_value().shape());
+    gradients_[inputs_[0]].zeros(inputs_[0]->get_value().shape());
+    gradients_[inputs_[1]].zeros(inputs_[1]->get_value().shape());
   }
 
   gradients_[inputs_[0]].add_(output_grad.dot(inputs_[1]->get_value()));
@@ -98,16 +98,18 @@ void BatchMatMulKernel::forward() {
 }
 
 void BatchMatMulKernel::backward(const NDArray& output_grad) {
-  if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(inputs_[1]->get_value().shape());
-    gradients_[inputs_[1]].zeros(inputs_[0]->get_value().shape());
-  }
-
   auto a_t = inputs_[0]->get_value().transpose();
   auto b_t = inputs_[1]->get_value().transpose();
+  auto g0 = output_grad.bmm(b_t);
+  auto g1 = a_t.bmm(output_grad);
 
-  gradients_[inputs_[0]].add_(output_grad.bmm(b_t));
-  gradients_[inputs_[1]].add_(a_t.bmm(output_grad));
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]] = g0;
+    gradients_[inputs_[1]] = g1;
+  } else {
+    gradients_[inputs_[0]].add_(g0);
+    gradients_[inputs_[1]].add_(g1);
+  }
 }
 
 std::string BatchMatMulKernel::str() const {
@@ -257,17 +259,15 @@ void SoftmaxCrossEntropyKernel::forward() {
   auto max_x = x.reduce_max(1, true);
   x.sub_(max_x).exp_();
   x.mul_(x.reduce_sum(1, true).recip_());
-  auto p = x; // p = softmax(x)
-
+  // calculate derivative
+  derivative_ = x.sub(y);
+ 
   // calculate CE loss
   x.log_().mul_(y.muls(-1.0f));
   value_ = x.reduce_sum(1, false).reduce_sum();
   value_.divs_(shape[0]);
   // std::cout << "ce=\n" << value_ << std::endl;
  
-  // calculaet derivative
-  derivative_ = p.sub_(y);
-
   if (swapped) {
     shape.swap(-2, -1);
     derivative_.reshape(shape.v());
@@ -306,9 +306,9 @@ void ReLUKernel::forward() {
 
 void ReLUKernel::backward(const NDArray& output_grad) {
   if (gradients_.empty()) {
-    gradients_[inputs_[0]] = value_;
+    gradients_[inputs_[0]].zeros(value_.shape());
   }
 
-  gradients_[inputs_[0]].clip_(0.0f, 1.0f);
+  gradients_[inputs_[0]].add_(value_.mul(output_grad).minimum_(0.0f, 1.0f));
 }
 
