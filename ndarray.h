@@ -531,7 +531,7 @@ class NDArray {
 
     NDArray& log_() {
       for (auto& val : arr_) {
-        val = std::log(val);
+        val = std::log(std::max(val, std::numeric_limits<float>::min()));
       }
       return *this;
     }

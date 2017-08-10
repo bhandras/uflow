@@ -2,6 +2,7 @@
 #include "graph.h"
 #include "kernel.h"
 #include "ndarray.h"
+#include "mnist.h"
 
 void test();
 std::vector<VariableRef> variables;
@@ -27,40 +28,54 @@ void sgd(GraphRef g, float learning_rate) {
   for (auto& var : variables) {
     auto v = var->get_value();
     const auto& batch_grad = g->gradient(var);
-
-    auto grad = g->gradient(var).reduce_sum(0).divs_(float(batch_grad.shape()[0]));
+    
+    auto grad = batch_grad.reduce_sum(0).divs_(float(batch_grad.shape()[0]));
     v.sub_(grad.muls_(learning_rate));
     var->set_value(v);
   }
 }
 
+NDArray one_hot(size_t batch_size, size_t classes, const std::vector<int>& data) {
+  NDArray result({batch_size, classes});
+  for (size_t i = 0; i < data.size(); ++i) {
+    result.set({i, size_t(data[i])}, 1.0f);
+  }
+  result.reshape({batch_size, 1, classes});
+  return result;
+}
+
+// #include <xmmintrin.h>
+
 int main() {
+  // _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
+  MNIST mnist;
+  mnist.load("mnist", true);
+
   GraphRef g = std::make_shared<Graph>();
   
-  auto X = Variable::create(g, {1, 3});
-  auto y = Variable::create(g, {1, 3});
+  auto X = Variable::create(g, {1, 28 * 28});
+  auto y = Variable::create(g, {1, 10});
 
-  auto l1 = Linear(X, 3, 3)->relu();
-  auto l2 = Linear(l1, 3, 3)->relu();
-  auto loss = l2->softmax_ce(y);
-  auto pred = l2->softmax();
+  auto l1 = Linear(X, 28*28, 512)->relu();
+  auto l2 = Linear(l1, 512, 512)->relu();
+  auto l3 = Linear(l1, 512, 10);
+  auto loss = l3->softmax_ce(y);
+  //auto pred = l3->softmax();
   
-  int steps = 10;
+  size_t batch_size = 10;
+  size_t classes = 10;
+  int steps = 100;
 
   for (int i = 0; i < steps; ++i) {
-    X->set_value(NDArray({2, 1, 3}, {1, 2, 3, 2, 4, 8}));
-    y->set_value(NDArray({2, 1, 3}, {0, 1, 0, 0, 0, 1}));
+    auto batch = mnist.get_train_batch(batch_size);
+    X->set_value(NDArray({batch_size, 1, 28*28}, std::get<0>(batch)));
+    y->set_value(one_hot(batch_size, classes, std::get<1>(batch)));
     g->forward();
     g->backward(loss);
-    //std::cout << "l1:\n" << l1->get_value() << std::endl;
-    //std::cout << "l2:\n" << l2->get_value() << std::endl;
-    //std::cout << "pred:\n" << pred->get_value() << std::endl;
     std::cout << "loss: " << loss->get_value() << std::endl;
     sgd(g, 0.01);
-    //std::cout << "---------------" << std::endl;
   }
-
-  // std::cout << pred->get_value() << std::endl;
+  //std::cout << pred->get_value() << std::endl;
   return 0;
 }
 
