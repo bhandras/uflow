@@ -473,6 +473,46 @@ class NDArray {
           }, axis, keep_dims, 0.0f);
     }
 
+    NDArray argmax(int axis=-1) const {
+      if (axis < -1 || (0 <= axis && shape_.size() <= axis)) {
+        throw RuntimeError("NDArray::argmax: invalid axis "
+            + std::to_string(axis)
+            + ", shape: "
+            + vstr(shape_));
+      }
+
+      if (axis == -1) {
+        size_t max_idx = 0;
+        float max_val = arr_[0];
+        for (size_t i = 1; i < arr_.size(); ++i) {
+          if (arr_[i] > max_val) {
+            max_idx = i;
+          }
+        }
+
+        return NDArray({1}, {float(max_idx)});
+      }
+
+      auto shape = shape_;
+      shape.erase(shape.begin() + axis);
+      NDArray res(shape);
+
+      for (size_t i = 0; i < res.arr_.size(); ++i) { 
+        float max_val = arr_[i];
+        res.arr_[i] = 0;
+
+        for (size_t j = 1; j < shape_[axis]; ++j) {
+          size_t offs = i + j * strides_[axis];
+          if (arr_[offs] > max_val) {
+            max_val = arr_[offs];
+            res.arr_[i] = j;
+          }
+        }
+      }
+      
+      return res;
+    }
+
     NDArray max_filter(float x) const {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::max_filter on zero-size array");
