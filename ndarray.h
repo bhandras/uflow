@@ -117,6 +117,10 @@ class NDArray {
       }
     }
 
+    const std::vector<float> vec() const {
+      return arr_;
+    }
+
     void squeeze(size_t axis) {
       if (shape_.empty() ||
           axis > shape_.size() ||
@@ -191,8 +195,10 @@ class NDArray {
 
     void reshape(const std::vector<size_t>& shape) {
       size_t new_size = 1;
-      for (auto dim : shape) {
-        new_size *= dim;
+      for (auto ax : shape) {
+        if (ax != 0) {
+          new_size *= ax;
+        }
       }
 
       if (new_size != arr_.size()) {
@@ -394,7 +400,7 @@ class NDArray {
      return  arr_[pos];
     }
 
-    NDArray reduce(std::function<void(float&, const float&)> op,
+    NDArray reduce(std::function<void(float&, const float&, size_t, size_t)> op,
         int axis, bool keep_dims, float init) const {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::reduce on zero-size array");
@@ -416,7 +422,7 @@ class NDArray {
         auto res = NDArray(shape);
         res.arr_[0] = init;
         for (auto i = 0; i < arr_.size(); ++i) {
-          op(res.arr_[0], arr_[i]);
+          op(res.arr_[0], arr_[i], 0, i);
         }
 
         return res;
@@ -434,9 +440,11 @@ class NDArray {
       if (stride == 1) {
         for (size_t i = 0; i < res.arr_.size(); i++) {
           res.arr_[i] = init;
-
+          
+          size_t ax_idx = 0;
           for (size_t j = i*shape_[axis]; j < (i+1)*shape_[axis]; ++j) {
-            op(res.arr_[i], arr_[j]);
+            op(res.arr_[i], arr_[j], i, ax_idx);
+            ++ax_idx;
           }
         }
       } else {
@@ -444,9 +452,11 @@ class NDArray {
         for (size_t i = 0; i < res.arr_.size(); i++) {
           int offs = stride * (i / stride) + i;
           res.arr_[pos] = init;
-
+          
+          size_t ax_idx = 0;
           for (size_t j = 0; j < shape_[axis]; ++j) {
-            op(res.arr_[pos], arr_[offs + j * stride]);
+            op(res.arr_[pos], arr_[offs + j * stride], pos, ax_idx);
+            ++ax_idx;
           }
           pos++;
         }
@@ -459,7 +469,7 @@ class NDArray {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::reduce_max on zero-size array");
       }
-      return reduce([](float& x, const float& y) {
+      return reduce([](float& x, const float& y, size_t i, size_t ax_idx) {
             x = std::max(x, y);
           }, axis, keep_dims, std::numeric_limits<float>::min());
     }
@@ -468,49 +478,30 @@ class NDArray {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::reduce_sum on zero-size array");
       }
-      return reduce([](float& x, const float& y) {
+      return reduce([](float& x, const float& y, size_t i, size_t ax_idx) {
           x += y;
           }, axis, keep_dims, 0.0f);
     }
-
+   
     NDArray argmax(int axis=-1) const {
-      if (axis < -1 || (0 <= axis && shape_.size() <= axis)) {
-        throw RuntimeError("NDArray::argmax: invalid axis "
-            + std::to_string(axis)
-            + ", shape: "
-            + vstr(shape_));
+      if (arr_.empty()) {
+        throw RuntimeError("NDArray::reduce_sum on zero-size array");
       }
-
-      if (axis == -1) {
-        size_t max_idx = 0;
-        float max_val = arr_[0];
-        for (size_t i = 1; i < arr_.size(); ++i) {
-          if (arr_[i] > max_val) {
-            max_idx = i;
+      const float init = std::numeric_limits<float>::min();
+      float max_val = init;
+      size_t curr_i = 0;
+      return reduce([&](float& x, const float& y, size_t i, size_t ax_idx) {
+          if (curr_i != i) {
+            curr_i = i;
+            max_val = init;
           }
-        }
 
-        return NDArray({1}, {float(max_idx)});
-      }
-
-      auto shape = shape_;
-      shape.erase(shape.begin() + axis);
-      NDArray res(shape);
-
-      for (size_t i = 0; i < res.arr_.size(); ++i) { 
-        float max_val = arr_[i];
-        res.arr_[i] = 0;
-
-        for (size_t j = 1; j < shape_[axis]; ++j) {
-          size_t offs = i + j * strides_[axis];
-          if (arr_[offs] > max_val) {
-            max_val = arr_[offs];
-            res.arr_[i] = j;
+          if (y > max_val) {
+            max_val = y;
+            x = ax_idx;
           }
-        }
-      }
-      
-      return res;
+
+          }, axis, false, 0.0f);
     }
 
     NDArray max_filter(float x) const {
