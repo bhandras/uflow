@@ -244,7 +244,7 @@ void Graph::backward(NodeRef node) {
  
   size_t i = top_order_.size();
   for (; i != 0; --i) {
-    if (top_order_[i] == node) break;
+    if (top_order_[i-1] == node) break;
   }
 
   if (i == 0) {
@@ -252,7 +252,7 @@ void Graph::backward(NodeRef node) {
   }
 
   for (; i != 0; --i) {
-    auto curr_node = top_order_[i - 1];
+    auto curr_node = top_order_[i-1];
     auto kernel = curr_node->kernel();
     bool leaf_node = kernel->get_inputs().empty();
 
@@ -287,7 +287,7 @@ NDArray Graph::gradient(const NodeRef& node) const {
   if (it != gradients_.end()) {
     return it->second;
   }
-  
+ 
   return NDArray();
 }
 

@@ -261,7 +261,7 @@ void SoftmaxCrossEntropyKernel::forward() {
   x.mul_(x.reduce_sum(1, true).recip_());
   // calculate derivative
   derivative_ = x.sub(y);
- 
+  
   // calculate CE loss
   x.log_().mul_(y.muls(-1.0f));
   value_ = x.reduce_sum(1, false).reduce_sum();
@@ -279,13 +279,11 @@ void SoftmaxCrossEntropyKernel::forward() {
 }
 
 void SoftmaxCrossEntropyKernel::backward(const NDArray& output_grad) {
-  Shape og_shape(output_grad.shape());
-
   if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(output_grad.shape());
+    gradients_[inputs_[0]].zeros(derivative_.shape());
   }
 
-  gradients_[inputs_[0]].add_(output_grad.mul(derivative_));
+  gradients_[inputs_[0]].add_(derivative_.mul(output_grad));
 }
 
 std::string SoftmaxCrossEntropyKernel::str() const {
@@ -302,13 +300,14 @@ std::string ReLUKernel::str() const {
 
 void ReLUKernel::forward() {
   value_ = inputs_[0]->get_value().max_filter(0.0f);
+  derivative_ = value_.minimum_(0.0f, 1.0f);
 }
 
 void ReLUKernel::backward(const NDArray& output_grad) {
   if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(value_.shape());
+    gradients_[inputs_[0]].zeros(derivative_.shape());
   }
 
-  gradients_[inputs_[0]].add_(value_.mul(output_grad).minimum_(0.0f, 1.0f));
+  gradients_[inputs_[0]].add_(derivative_.mul(output_grad));
 }
 

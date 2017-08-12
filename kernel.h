@@ -152,6 +152,9 @@ class ReLUKernel : public Kernel {
   protected:
     virtual void forward() override;
     virtual void backward(const NDArray& output_grad) override;
+ 
+  private:
+    NDArray derivative_;
 };
 
 #endif // _kernel_h_
