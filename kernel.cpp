@@ -8,12 +8,12 @@ void AddKernel::forward() {
 
 void AddKernel::backward(const NDArray& output_grad) {
   if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(inputs_[0]->get_value().shape());
-    gradients_[inputs_[1]].zeros(inputs_[1]->get_value().shape());
+    gradients_[inputs_[0]] = output_grad;
+    gradients_[inputs_[1]] = output_grad.reduce_sum(0, false);
+  } else {
+    gradients_[inputs_[0]].add_(output_grad);
+    gradients_[inputs_[1]].add_(output_grad.reduce_sum(0, false));
   }
-  
-  gradients_[inputs_[0]].add_(output_grad);
-  gradients_[inputs_[1]].add_(output_grad);
 }
 
 std::string AddKernel::str() const {
@@ -126,32 +126,8 @@ void SoftmaxKernel::forward() {
   value_ = inputs_[0]->get_value();
   
   Shape shape(value_.shape());
-  bool invalid = false;
-
-  bool unsqueezed = false; 
-  if (shape.size() != 3) {
-    if (shape.size() == 2) {
-      value_.unsqueeze(2);
-      unsqueezed = true;
-    } else {
-      invalid = true;
-    }
-  }
-  
-  if (!invalid && shape[-1] != 1 && shape[-2] != 1) {
-    // can only softmax(_, m, n) if m == 1 or n == 1
-    invalid = true;
-  }
-
-  if (invalid) {
+  if (shape.size() != 2) {
     throw ValueError("Incompatible shape for softmax: " + vstr(shape.v()));
-  }
-
-  bool swapped = false;
-  // make sure we're dealing with column vectors
-  if (shape[-1] != 1) {
-    shape.swap(-2, -1);
-    value_.reshape(shape.v());
   }
 
   auto m = value_.reduce_max(1, true);
@@ -159,7 +135,7 @@ void SoftmaxKernel::forward() {
   value_.mul_(value_.reduce_sum(1, true).recip_());
 
   size_t nb = shape[0]; // number of batches
-  size_t js = shape[-2]; // size of the Jacobian
+  size_t js = shape[-1]; // size of the Jacobian
 
   derivative_.zeros({nb, js, js});
 
@@ -167,25 +143,16 @@ void SoftmaxKernel::forward() {
     for (size_t i = 0; i < js; ++i) { // Jacobian row
       for (size_t j = 0; j < js; ++j) { // Jacobian col
         if (i == j) {
-          float v_i = value_.get({b, i, 0});
+          float v_i = value_.get({b, i});
           float val = v_i * (1.0f - v_i);
           derivative_.set({b, i, i}, val);
         } else {
-          float v_i = value_.get({b, i, 0});
-          float v_j = value_.get({b, j, 0});
+          float v_i = value_.get({b, i});
+          float v_j = value_.get({b, j});
           derivative_.set({b, i, j}, -v_i * v_j);
         }
       }
     }
-  }
-
-  if (swapped) {
-    shape.swap(-1, -2);
-    value_.reshape(shape.v());
-  }
-
-  if (unsqueezed) {
-    value_.squeeze(2);
   }
 }
 
@@ -222,67 +189,30 @@ void SoftmaxCrossEntropyKernel::forward() {
   }
 
   Shape shape(x.shape());
-  bool invalid = false;
 
-  bool unsqueezed = false; 
-  if (shape.size() != 3) {
-    if (shape.size() == 2) {
-      x.unsqueeze(2);
-      y.unsqueeze(2);
-      shape.unsqueeze(2);
-      unsqueezed = true;
-    } else {
-      invalid = true;
-    }
-  }
-  
-  if (!invalid && shape[-1] != 1 && shape[-2] != 1) {
-    // can only softmax(_, m, n) if m == 1 or n == 1
-    invalid = true;
-  }
-
-  if (invalid) {
-    throw ValueError("Incompatible shape for softmax: " + vstr(shape.v()));
-  }
-
-  value_ = x;
-
-  bool swapped = false;
-  // make sure we're dealing with column vector
-  if (shape[-1] != 1) {
-    shape.swap(-2, -1);
-    x.reshape(shape.v());
-    y.reshape(shape.v());
-    swapped = true;
+  if (x.shape().size() != 2) {
+    std::cout << "x.shape.size " << x.shape().size() << std::endl;
+    throw ValueError("Incompatible shape for softmax: " + vstr(x.shape()));
   }
 
   auto max_x = x.reduce_max(1, true);
-  x.sub_(max_x).exp_();
-  x.mul_(x.reduce_sum(1, true).recip_());
+  auto x_sub_max_x = x.sub(max_x);
+  auto logsum = x_sub_max_x.exp().reduce_sum(1, true).log_();
+  logsum.add_(max_x);
+  auto log_sm = x.sub(logsum);
+  
   // calculate derivative
-  derivative_ = x.sub(y);
+  derivative_ = log_sm.exp_().sub_(y).divs_(shape[0]);
   
   // calculate CE loss
-  x.log_().mul_(y.muls(-1.0f));
-  value_ = x.reduce_sum(1, false).reduce_sum();
+  value_ = x_sub_max_x.muls_(-1.0f).mul_(y).reduce_sum();
   value_.divs_(shape[0]);
-  // std::cout << "ce=\n" << value_ << std::endl;
- 
-  if (swapped) {
-    shape.swap(-2, -1);
-    derivative_.reshape(shape.v());
-  }
-  
-  if (unsqueezed) {
-    derivative_.squeeze(2);
-  }
 }
 
 void SoftmaxCrossEntropyKernel::backward(const NDArray& output_grad) {
   if (gradients_.empty()) {
-    gradients_[inputs_[0]].zeros(derivative_.shape());
+    gradients_[inputs_[0]].zeros(inputs_[0]->get_value().shape());
   }
-
   gradients_[inputs_[0]].add_(derivative_.mul(output_grad));
 }
 
@@ -300,7 +230,9 @@ std::string ReLUKernel::str() const {
 
 void ReLUKernel::forward() {
   value_ = inputs_[0]->get_value().max_filter(0.0f);
-  derivative_ = value_.minimum_(0.0f, 1.0f);
+  
+  derivative_ = value_;
+  derivative_.minimum_(0.0f, 1.0f);
 }
 
 void ReLUKernel::backward(const NDArray& output_grad) {
@@ -308,6 +240,6 @@ void ReLUKernel::backward(const NDArray& output_grad) {
     gradients_[inputs_[0]].zeros(derivative_.shape());
   }
 
-  gradients_[inputs_[0]].add_(derivative_.mul(output_grad));
+  gradients_[inputs_[0]].add_(output_grad.mul(derivative_));
 }
 

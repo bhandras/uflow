@@ -38,6 +38,10 @@ class Kernel {
       return default_grad;
     }
 
+    void clear_gradients() {
+      gradients_.clear();
+    }
+
     virtual std::string str() const {
       return "kernel";
     }

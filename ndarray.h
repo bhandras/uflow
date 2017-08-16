@@ -509,7 +509,7 @@ class NDArray {
         throw RuntimeError("NDArray::max_filter on zero-size array");
       }
 
-      NDArray res(shape());
+      NDArray res(shape_);
       for (auto i = 0; i < res.arr_.size(); ++i) {
         res.arr_[i] = arr_[i] >= x ? arr_[i] : x;
       }
@@ -795,7 +795,7 @@ class NDArray {
     NDArray bmm(const NDArray& other) const {
       /*
        * Valid combinations:
-       * - (m, n) * (n, k) = (1, m, k)
+       * - (m, n) * (n, k) = (m, k)
        * - (m, n) * (b, n, k)  and  (b, m, n) * (n, k) = (b, m, k)
        * - (1, m, n) * (b, n, k)  and  (b, m, n) * (1, n, k) = (1, m, k)
        * - (b, m, n) * (b, n, k) = (b, m, k)
@@ -849,6 +849,10 @@ class NDArray {
             }
           }
         }
+      }
+
+      if (count == 1) {
+        res.squeeze(0);
       }
 
       return res;

@@ -146,8 +146,8 @@ void Variable::set_value(const NDArray& value) {
   if (shape1 != shape2) {
     int s1 = shape1.size();
     int s2 = shape2.size();
-
     bool ok = false;
+    
     if (std::abs(s1 - s2) <= 1) {
       ok = true;
       for (size_t i = 1; i <= std::min(s1, s2); ++i) {
@@ -256,6 +256,8 @@ void Graph::backward(NodeRef node) {
     auto kernel = curr_node->kernel();
     bool leaf_node = kernel->get_inputs().empty();
 
+    kernel->clear_gradients();
+
     if (adj_[curr_node].empty()) {
       auto output_grad = NDArray({1}, {1});
       if (!leaf_node) {
@@ -275,9 +277,8 @@ void Graph::backward(NodeRef node) {
           } else {
             gradients_[curr_node].add_(output_grad);
           }
-
         }
-      } 
+      }
     }
   }
 }
