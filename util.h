@@ -20,7 +20,6 @@ std::string vstr(const std::vector<T>& v) {
   return ss.str();
 }
 
-
 template <class T>
 std::vector<T> random_vec(size_t size, T min_val, T max_val) {
   std::random_device rd;
@@ -35,8 +34,22 @@ std::vector<T> random_vec(size_t size, T min_val, T max_val) {
   return vec;
 }
 
-std::vector<float> random_vec(size_t, float, float);
+template <class T>
+std::vector<T> random_normal_vec(size_t size, T mean, T stddev) {
+  std::random_device rd;
+  std::default_random_engine generator(rd());
+  std::uniform_real_distribution<T> distribution(mean, stddev);
+  std::vector<T> vec(size);
+  
+  std::generate(vec.begin(), vec.end(), [&](){
+      return distribution(generator);
+      });
 
+  return vec;
+}
+
+std::vector<float> random_vec(size_t, float, float);
+std::vector<float> random_normal_vec(size_t, float, float);
 
 #endif // _util_h_
 

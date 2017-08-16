@@ -8,16 +8,13 @@ void test();
 std::vector<VariableRef> variables;
 
 OpRef Linear(OpRef x, size_t inp_size, size_t out_size) {
-  auto W = Variable::create(x->graph(), Shape({1, inp_size, out_size}));
+  auto W = Variable::create(x->graph(), Shape({inp_size, out_size}));
   variables.push_back(W);
-  W->set_value(NDArray({1, inp_size, out_size},
-        random_vec<float>(inp_size * out_size, 0.0f, 1.0f)));
+  W->set_value(NDArray({inp_size, out_size},
+        random_normal_vec<float>(inp_size * out_size, 0.0f, 0.1f)));
 
-  auto b = Variable::create(x->graph(), {1, 1, out_size});
+  auto b = Variable::create(x->graph(), {out_size});
   variables.push_back(b);
-  b->set_value(NDArray({1, 1, out_size},
-        random_vec<float>(out_size, 0.0f, 1.0f)));
-
   // std::cout << "W:\n" << W->get_value() << std::endl;
   // std::cout << "b:\n" << b->get_value() << std::endl;
 
@@ -28,9 +25,8 @@ void sgd(GraphRef g, float learning_rate) {
   for (auto& var : variables) {
     auto v = var->get_value();
     const auto& batch_grad = g->gradient(var);
-    
-    auto grad = batch_grad.reduce_sum(0).divs_(float(batch_grad.shape()[0]));
-    v.sub_(grad.muls_(learning_rate));
+    //std::cout << "grad: " << batch_grad.reduce_sum() << std::endl;
+    v.sub_(batch_grad.muls(learning_rate));
     var->set_value(v);
   }
 }
@@ -40,40 +36,86 @@ NDArray one_hot(size_t batch_size, size_t classes, const std::vector<int>& data)
   for (size_t i = 0; i < data.size(); ++i) {
     result.set({i, size_t(data[i])}, 1.0f);
   }
-  result.reshape({batch_size, 1, classes});
+  result.reshape({batch_size, classes});
   return result;
+}
+
+void print_stat(const std::vector<int>& labels, const NDArray& predictions) {
+  auto prediction_labels = predictions.argmax(1).vec();
+  int match = 0;
+  for (size_t i = 0; i < labels.size(); ++i) {
+    if (labels[i] == prediction_labels[i]) {
+      match++;
+    }
+    // std::cout << "(" << labels[i] << ", " << int(prediction_labels[i]) << ") ";
+  }
+  // std::cout << std::endl;
+  float accuracy = float(match) / labels.size(); 
+  std::cout << "acc: " << accuracy << std::endl;
 }
 
 // #include <xmmintrin.h>
 
 int main() {
+  /*
+  GraphRef tg = std::make_shared<Graph>();
+  auto tW = Variable::create(tg, Shape({3, 3}));
+  tW->set_value(NDArray({3, 3}, {2, 3, 5, 7, -9, 11, 13, 17, 19}));
+
+  auto tb = Variable::create(tg, Shape({1, 3}));
+  tb->set_value(NDArray({1, 3}, {3, 9, -43}));
+
+  auto tX = Variable::create(tg, {3});
+  auto ty = Variable::create(tg, {3});
+
+  tX->set_value(NDArray({2, 3}, {5, 99, 112, 4, 3, 7}));
+  ty->set_value(NDArray({2, 3}, {0, 1, 0, 0, 0, 1}));
+
+  auto tl1 = tX->bmm(tW)->add(tb)->relu();
+  auto tl2 = tl1->bmm(tW)->add(tb)->relu();
+  auto tloss = tl2->softmax_ce(ty);
+
+  tg->forward();
+  
+  std::cout <<"loss\n"<< tloss->get_value() << std::endl;
+  tg->backward(tloss);
+
+  std::cout << "grad W\n"<<tg->gradient(tW) << "\n---" << std::endl;
+  std::cout << "grad b\n"<< tg->gradient(tb) << "\n---" << std::endl;
+
+  return 0;
+  */
   // _MM_SET_EXCEPTION_MASK(_MM_GET_EXCEPTION_MASK() & ~_MM_MASK_INVALID);
   MNIST mnist;
   mnist.load("mnist", true);
 
   GraphRef g = std::make_shared<Graph>();
   
-  auto X = Variable::create(g, {1, 28 * 28});
-  auto y = Variable::create(g, {1, 10});
+  auto X = Variable::create(g, {28 * 28});
+  auto y = Variable::create(g, {10});
 
-  auto l1 = Linear(X, 28*28, 512)->relu();
-  auto l2 = Linear(l1, 512, 512)->relu();
-  auto l3 = Linear(l1, 512, 10);
-  auto loss = l3->softmax_ce(y);
-  //auto pred = l3->softmax();
+  auto l1 = Linear(X, 28*28, 100)->relu();
+  auto l2 = Linear(l1, 100, 10);
+  auto loss = l2->softmax_ce(y);
+  auto pred = l2->softmax();
   
-  size_t batch_size = 10;
+  size_t batch_size = 100;
   size_t classes = 10;
-  int steps = 100;
+  int steps = 1000;
 
   for (int i = 0; i < steps; ++i) {
     auto batch = mnist.get_train_batch(batch_size);
-    X->set_value(NDArray({batch_size, 1, 28*28}, std::get<0>(batch)));
-    y->set_value(one_hot(batch_size, classes, std::get<1>(batch)));
+    auto& batch_X = std::get<0>(batch);
+    auto& batch_y = std::get<1>(batch);
+
+    X->set_value(NDArray({batch_size, 28*28}, batch_X));
+    y->set_value(one_hot(batch_size, classes, batch_y));
     g->forward();
-    g->backward(loss);
+   
     std::cout << "loss: " << loss->get_value() << std::endl;
-    sgd(g, 0.01);
+    print_stat(batch_y, pred->get_value());
+    g->backward(loss);
+    sgd(g, 0.025);
   }
   //std::cout << pred->get_value() << std::endl;
   return 0;

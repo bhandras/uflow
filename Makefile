@@ -1,5 +1,5 @@
 CXX := clang++
-CXXFLAGS := -std=c++1y -Wall
+CXXFLAGS := -O3 -ffast-math -std=c++1y -Wall
 TARGET := uflow
 
 all:
