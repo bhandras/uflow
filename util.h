@@ -38,7 +38,7 @@ template <class T>
 std::vector<T> random_normal_vec(size_t size, T mean, T stddev) {
   std::random_device rd;
   std::default_random_engine generator(rd());
-  std::uniform_real_distribution<T> distribution(mean, stddev);
+  std::normal_distribution<T> distribution(mean, stddev);
   std::vector<T> vec(size);
   
   std::generate(vec.begin(), vec.end(), [&](){
