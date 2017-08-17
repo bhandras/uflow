@@ -5,25 +5,22 @@
 #include "ndarray.h"
 #include "mnist.h"
 
-std::vector<VariableRef> variables;
 
 OpRef Linear(OpRef x, size_t inp_size, size_t out_size) {
-  float stddev = std::sqrt(6.0f / (inp_size + out_size));
+  auto W = Variable::create(x->graph(), Shape({inp_size, out_size}), true);
+  auto b = Variable::create(x->graph(), {out_size}, true);
   
-  auto W = Variable::create(x->graph(), Shape({inp_size, out_size}));
-  variables.push_back(W);
+  // init
+  float stddev = std::sqrt(6.0f / (inp_size + out_size));
   W->set_value(NDArray({inp_size, out_size},
         random_normal_vec<float>(inp_size * out_size, 0.0f, stddev)));
-
-  auto b = Variable::create(x->graph(), {out_size});
-  variables.push_back(b);
-  // std::cout << "W:\n" << W->get_value() << std::endl;
-  // std::cout << "b:\n" << b->get_value() << std::endl;
 
   return x->bmm(W)->add(b);
 }
 
 void sgd(GraphRef g, float learning_rate) {
+  auto variables = g->get_variables();
+
   for (auto& var : variables) {
     auto v = var->get_value();
     const auto& batch_grad = g->gradient(var);

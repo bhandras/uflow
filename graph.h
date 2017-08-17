@@ -96,7 +96,7 @@ class Op : public Node {
 class Variable : public Op {
  public:
     static VariableRef create(GraphRef graph,
-        const Shape& shape, bool requires_grad=true);
+        const Shape& shape, bool requires_grad=false);
 
     Variable(const Op::protected_&, GraphRef graph,
         const Shape& shape, bool requires_grad);
@@ -133,6 +133,7 @@ class Graph {
     void forward();
     void backward(NodeRef node);
 
+    std::vector<VariableRef> get_variables() const;
     NDArray gradient(const NodeRef& node) const;
 
   protected:

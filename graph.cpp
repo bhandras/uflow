@@ -110,7 +110,7 @@ std::string Op::str() const {
 
 
 VariableRef Variable::create(GraphRef graph,
-    const Shape& shape, bool requires_grad/* = true */) {
+    const Shape& shape, bool requires_grad/* = false */) {
   return std::make_shared<Variable>(Op::protected_{0}, graph, shape, requires_grad); 
 }
 
@@ -271,7 +271,7 @@ void Graph::backward(NodeRef node) {
         
         if (!leaf_node) {
           kernel->backward(output_grad);
-        } else {
+        } else if (curr_node->requires_grad()) {
           if (gradients_.count(curr_node) == 0) {
             gradients_[curr_node] = output_grad;
           } else {
@@ -281,6 +281,17 @@ void Graph::backward(NodeRef node) {
       }
     }
   }
+}
+
+std::vector<VariableRef> Graph::get_variables() const {
+  std::vector<VariableRef> variables;
+  for (auto item : adj_) {
+    if (item.first->requires_grad()) {
+      variables.push_back(std::static_pointer_cast<Variable>(item.first));
+    }
+  }
+
+  return variables;
 }
 
 NDArray Graph::gradient(const NodeRef& node) const {
