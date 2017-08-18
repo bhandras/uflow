@@ -229,10 +229,18 @@ std::string ReLUKernel::str() const {
 }
 
 void ReLUKernel::forward() {
-  value_ = inputs_[0]->get_value().max_filter(0.0f);
+  //ln(1.0 + e^x)
+  //auto ones = NDArray();
+  //ones.ones(inputs_[0]->get_value().shape());
   
-  derivative_ = value_;
-  derivative_.minimum_(0.0f, 1.0f);
+  //value_ = inputs_[0]->get_value().exp();
+  //value_.add_(ones).log_();
+  // 1.0 / (1.0 + e^-x)
+  //derivative_ = inputs_[0]->get_value();
+  //derivative_.muls_(-1.0f).exp_().add_(ones).recip_();
+
+  value_ = inputs_[0]->get_value().max_filter(0.0f);
+  derivative_ = value_.minimum(0.0f, 1.0f);
 }
 
 void ReLUKernel::backward(const NDArray& output_grad) {
