@@ -117,6 +117,20 @@ class NDArray {
       }
     }
 
+    bool operator==(const NDArray& other) const {
+      if (shape_ != other.shape_) {
+        return false;
+      }
+
+      for (size_t i = 0; i < arr_.size(); ++i) {
+        if (arr_[i] != other.arr_[i]) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
     const std::vector<float> vec() const {
       return arr_;
     }
@@ -330,6 +344,10 @@ class NDArray {
       }
 
       NDArray res(new_shape);
+      if (arr_.empty()) {
+        return res;
+      }
+
       auto strides_d = strides(new_shape);
       
       std::vector<size_t> nonzero_strides;
@@ -529,6 +547,11 @@ class NDArray {
       return *this;
     }
 
+    NDArray minimum(float a, float b) const {
+      auto tmp = *this;
+      return tmp.minimum_(a, b);
+    }
+
     NDArray& minimum_(float a, float b) {
       if (arr_.empty()) {
         throw RuntimeError("NDArray::minimum_ on zero-size array");
@@ -540,8 +563,6 @@ class NDArray {
 
       return *this;
     }
-
-
 
     NDArray exp() const {
       auto tmp = *this;
