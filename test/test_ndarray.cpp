@@ -46,7 +46,6 @@ TEST_CASE("NDArray::add") {
 
 TEST_CASE("NDArray::dot") {
   REQUIRE(NDArray().dot(NDArray()) == NDArray());
-  //REQUIRE(NDArray({1}, {2}).dot(NDArray({1}, {3})) == NDArray({1}, {6}));
 
   GIVEN("Incompatible shapes") {
     NDArray a({1, 3});
@@ -77,6 +76,33 @@ TEST_CASE("NDArray::dot") {
 }
 
 TEST_CASE("NDArray::mm") {
+  GIVEN("Incompatible shapes") {
+    CHECK_THROWS(NDArray().mm(NDArray()));
+    CHECK_THROWS(NDArray({1}).mm(NDArray()));
+    CHECK_THROWS(NDArray({1}).mm(NDArray({1})));
+    
+    CHECK_THROWS(NDArray({1}).mm(NDArray({1, 1})));
+    CHECK_THROWS(NDArray({1, 1}).mm(NDArray({1})));
+
+    CHECK_THROWS(NDArray({1, 2}).mm(NDArray({3, 4})));
+    CHECK_THROWS(NDArray({1, 2, 3}).mm(NDArray({3, 3})));
+    CHECK_THROWS(NDArray({1, 2, 3}).mm(NDArray({1, 3, 2})));
+  }
+
+  GIVEN("Compatible shapes") {
+    REQUIRE(NDArray({1, 1}, {1}).mm(NDArray({1, 1}, {3}))
+        == NDArray({1, 1}, {3}));
+
+    REQUIRE(NDArray({1, 3}, {1, 2, 3}).mm(NDArray({3, 1}, {4, 5, 6}))
+        == NDArray({1, 1}, {32}));
+
+    REQUIRE(NDArray({2, 2}, {1, 2, 3, 4}).mm(NDArray({2, 2}, {5, 6, 7, 8}))
+        == NDArray({2, 2}, {19, 22, 43, 50}));
+
+    REQUIRE(NDArray({2, 2}, {1, 2, 3, 4}).mm(NDArray({2, 3}, {5, 6, 7, 8, 9, 10}))
+        == NDArray({2, 3}, {21, 24, 27, 47, 54, 61}));
+
+  }
 }
 
 TEST_CASE("NDArray::bmm") {
