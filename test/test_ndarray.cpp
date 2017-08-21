@@ -34,8 +34,72 @@ TEST_CASE("NDArray::add") {
       b.reshape({1, 1, 3});
       REQUIRE(a.add(b) == c);
       
-      REQUIRE(a.add_(b) == c);
-      REQUIRE(a == c);
+      b.reshape({3, 1});
+      NDArray d({2, 3, 3}, {3, 4, 5, 4, 5, 6, 6, 7, 8, 6, 7, 8, 7, 8, 9, 9, 10, 11});
+      REQUIRE(a.add(b) == d);
+      
+      REQUIRE(a.add_(b) == d);
+      REQUIRE(a == d);
     }
   }
 }
+
+TEST_CASE("NDArray::dot") {
+  REQUIRE(NDArray().dot(NDArray()) == NDArray());
+  //REQUIRE(NDArray({1}, {2}).dot(NDArray({1}, {3})) == NDArray({1}, {6}));
+
+  GIVEN("Incompatible shapes") {
+    NDArray a({1, 3});
+
+    CHECK_THROWS(a.dot(NDArray()));
+    CHECK_THROWS(a.dot(NDArray({2})));
+    CHECK_THROWS(a.dot(NDArray({3})));
+    CHECK_THROWS(a.dot(NDArray({1, 2})));
+    CHECK_THROWS(a.dot(NDArray({2, 3})));
+    CHECK_THROWS(a.dot(NDArray({1, 1, 3})));
+  }
+
+  GIVEN("Compatible shapes") {
+    NDArray a({3}, {1, 2, 3});
+    NDArray b({3}, {4, 5, 6});
+    NDArray c({1}, {32});
+
+    REQUIRE(a.dot(b) == c);
+
+    a.unsqueeze(0);
+    b.unsqueeze(0);
+    REQUIRE(a.dot(b) == c);
+
+    a.unsqueeze(0);
+    b.unsqueeze(0);
+    REQUIRE(a.dot(b) == c);
+  }
+}
+
+TEST_CASE("NDArray::mm") {
+}
+
+TEST_CASE("NDArray::bmm") {
+}
+
+TEST_CASE("NDArray::reduce_max") {
+}
+
+TEST_CASE("NDArray::reduce_sum") {
+}
+
+TEST_CASE("NDArray::argmax") {
+}
+
+TEST_CASE("NDArray::squeeze, NDArray::unsqueeze") {
+}
+
+TEST_CASE("NDArray::get, NDArray::set") {
+}
+
+TEST_CASE("NDArray::max_filter") {
+}
+
+TEST_CASE("NDArray::minimum") {
+}
+

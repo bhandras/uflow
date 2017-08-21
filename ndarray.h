@@ -706,71 +706,32 @@ class NDArray {
     }
 
     NDArray dot(const NDArray& other) const {
-      if (arr_.size() == 1 || other.arr_.size() == 1) {
-        return mul(other);
-      }
-      // shape size
+      // same size
       if (shape_.size() != other.shape_.size()) {
         throw IncompatibleShapes("NDArray::dot", {shape_, other.shape_});
       }
+      
+      size_t axes = shape_.size();
+      
+      if (axes == 0) {
+        return NDArray();
+      }
+      
+      bool ok = true;
+      for (size_t i = 0; ok && i < axes - 1; ++i) {
+        if (shape_[i] != 1 || other.shape_[i] != 1) {
+          ok = false;
+        }
+      }
 
-      // last dim
-      size_t ndim = shape_.size();
-      if (ndim >= 1 && shape_[ndim - 1] != other.shape_[ndim - 1]) {
+      if (!ok || shape_[axes - 1] != other.shape_[axes - 1]) {
         throw IncompatibleShapes("NDArray::dot", {shape_, other.shape_});
       }
 
-      // remaining
-      if (ndim > 1) {
-        bool good = true;
-        for (size_t i = 0; good && (i < ndim - 1); ++i) {
-          if (shape_[i] != other.shape_[i]) {
-            good = false;
-          }
-        }
-
-        if (good && (shape_[ndim - 1] != 1 && shape_[ndim - 2] != 1)) {
-          good = false;
-        }
-
-        if (!good) {
-          throw IncompatibleShapes("NDArray::dot", {shape_, other.shape_});
-        }
+      NDArray res({1});
+      for (size_t i = 0; i < arr_.size(); ++i) {
+        res.arr_[0] += arr_[i] * other.arr_[i];
       }
-
-      size_t stride = 0;
-      size_t res_shape_size = 0;
-
-      if (shape_[ndim - 1] == 1 || shape_[ndim - 2] == 1) {
-        stride = shape_[ndim - 1] * shape_[ndim - 2];
-        res_shape_size = shape_.size() - 1;
-      } else {
-        stride = shape_[ndim - 1];
-        res_shape_size = shape_.size();
-      }
-
-      std::vector<size_t> res_shape(res_shape_size);
-      for (size_t i = 0; i < res_shape_size - 1; ++i) {
-        res_shape[i] = shape_[i];
-      }
-      res_shape[res_shape_size - 1] = 1;
-      NDArray res(res_shape);
-
-      size_t count = 1;
-      for (size_t i = 0; i < res_shape_size - 1; ++i) {
-        count *= res_shape[i];
-      }
-      
-      for (int c = 0; c < count; ++c) {
-        size_t offset = c * stride;
-        auto& ai_dot_bi = res.arr_[c];
-        auto ai = &arr_[offset];
-        auto bi = &other.arr_[offset];
-
-        for (size_t j = 0; j < stride; ++j) {
-          ai_dot_bi += ai[j] * bi[j];
-        }
-      } 
       
       return res;
     }
