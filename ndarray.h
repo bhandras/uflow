@@ -777,9 +777,8 @@ class NDArray {
     NDArray bmm(const NDArray& other) const {
       /*
        * Valid combinations:
-       * - (m, n) * (n, k) = (m, k)
        * - (m, n) * (b, n, k)  and  (b, m, n) * (n, k) = (b, m, k)
-       * - (1, m, n) * (b, n, k)  and  (b, m, n) * (1, n, k) = (1, m, k)
+       * - (1, m, n) * (b, n, k)  and  (b, m, n) * (1, n, k) = (b, m, k)
        * - (b, m, n) * (b, n, k) = (b, m, k)
        */
       // TODO: refactor shapes
@@ -789,7 +788,7 @@ class NDArray {
       size_t s1 = shape1.size();
       size_t s2 = shape2.size();
 
-      bool ok = (s1 == 2 || s1 == 3) && (s2 == 2 || s2 == 3) &&
+      bool ok = ((s1 == 2 && s2 == 3) || (s1 == 3 && s2 == 2) || (s1 == 3 && s2 == 3)) &&
                 (shape1[-1] == shape2[-2]);
 
       if (ok && s1 == 3 && s2 == 3) {
@@ -831,10 +830,6 @@ class NDArray {
             }
           }
         }
-      }
-
-      if (count == 1) {
-        res.squeeze(0);
       }
 
       return res;
