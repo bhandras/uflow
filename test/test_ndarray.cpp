@@ -2,6 +2,20 @@
 #include "../ndarray.h"
 #include "../ndarray.cpp"
 
+TEST_CASE("NDArray::NDArray") {
+  using vs = std::vector<size_t>;
+
+  REQUIRE(NDArray().size() == 0);
+  REQUIRE(NDArray({1}).size() == 1);
+  REQUIRE(NDArray({1}).shape() == vs({1}));
+  REQUIRE(NDArray({1, 1, 1}).size() == 1);
+  REQUIRE(NDArray({1, 1, 1}) == NDArray({1, 1, 1}, {0}));
+  REQUIRE(NDArray({1, 1, 1}).shape() == vs({1, 1, 1}));
+  REQUIRE(NDArray({2, 2, 2}) == NDArray({2, 2, 2}, {0}));
+  REQUIRE(NDArray({2, 2, 2}, {1, 2, 3, 4})
+      == NDArray({2, 2, 2}, {1, 2, 3, 4, 1, 2, 3, 4}));
+}
+
 TEST_CASE("NDArray::add") {
   // empty + empty = empty
   REQUIRE(NDArray().add(NDArray()) == NDArray());
