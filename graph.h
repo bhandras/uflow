@@ -59,6 +59,7 @@ class Op : public Node {
     OpRef sub(NodeRef other);
     OpRef mul(NodeRef other);
     OpRef dot(NodeRef other);
+    OpRef mm(NodeRef other);
     OpRef bmm(NodeRef other);
     OpRef softmax();
     OpRef softmax_ce(NodeRef other);

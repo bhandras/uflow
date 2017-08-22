@@ -92,6 +92,33 @@ std::string DotKernel::str() const {
     + ")";
 }
 
+void MatMulKernel::forward() {
+  value_ = inputs_[0]->get_value().mm(inputs_[1]->get_value());
+}
+
+void MatMulKernel::backward(const NDArray& output_grad) {
+  auto a_t = inputs_[0]->get_value().transpose();
+  auto b_t = inputs_[1]->get_value().transpose();
+  auto g0 = output_grad.mm(b_t);
+  auto g1 = a_t.mm(output_grad);
+
+  if (gradients_.empty()) {
+    gradients_[inputs_[0]] = g0;
+    gradients_[inputs_[1]] = g1;
+  } else {
+    gradients_[inputs_[0]].add_(g0);
+    gradients_[inputs_[1]].add_(g1);
+  }
+}
+
+std::string MatMulKernel::str() const {
+  return "("
+    + inputs_[0]->get_value().str()
+    + " mm "
+    + inputs_[1]->get_value().str()
+    + ")";
+}
+
 
 void BatchMatMulKernel::forward() {
   value_ = inputs_[0]->get_value().bmm(inputs_[1]->get_value());

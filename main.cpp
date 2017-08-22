@@ -6,7 +6,7 @@
 #include "mnist.h"
 
 
-OpRef Linear(OpRef x, size_t inp_size, size_t out_size) {
+OpRef linear(OpRef x, size_t inp_size, size_t out_size) {
   auto W = Variable::create(x->graph(), Shape({inp_size, out_size}), true);
   auto b = Variable::create(x->graph(), {out_size}, true);
   
@@ -15,7 +15,7 @@ OpRef Linear(OpRef x, size_t inp_size, size_t out_size) {
   W->set_value(NDArray({inp_size, out_size},
         random_normal_vec<float>(inp_size * out_size, 0.0f, stddev)));
 
-  return x->bmm(W)->add(b);
+  return x->mm(W)->add(b);
 }
 
 void sgd(GraphRef g, float learning_rate) {
@@ -65,9 +65,9 @@ int main() {
   auto X = Variable::create(g, {28 * 28});
   auto y = Variable::create(g, {10});
 
-  auto l1 = Linear(X, 28*28, 512)->relu();
-  auto l2 = Linear(l1, 512, 512)->relu();
-  auto l3 = Linear(l1, 512, 10);
+  auto l1 = linear(X, 28*28, 512)->relu();
+  auto l2 = linear(l1, 512, 512)->relu();
+  auto l3 = linear(l1, 512, 10);
   auto loss = l3->softmax_ce(y);
   auto pred = l3->softmax();
   

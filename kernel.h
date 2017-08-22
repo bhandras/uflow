@@ -111,6 +111,17 @@ class DotKernel : public Kernel {
 };
 
 
+class MatMulKernel : public Kernel {
+  public:
+    MatMulKernel() = default;
+    virtual std::string str() const override;
+
+  protected:
+    virtual void forward() override;
+    virtual void backward(const NDArray& output_grad) override;
+};
+
+
 class BatchMatMulKernel : public Kernel {
   public:
     BatchMatMulKernel() = default;

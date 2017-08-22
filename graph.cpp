@@ -63,6 +63,7 @@ template OpRef Op::op<AddKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<SubKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<MulKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<DotKernel, NodeRef>(const std::string&, NodeRef);
+template OpRef Op::op<MatMulKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<BatchMatMulKernel, NodeRef>(const std::string&, NodeRef);
 template OpRef Op::op<SoftmaxKernel>(const std::string&);
 template OpRef Op::op<SoftmaxCrossEntropyKernel>(const std::string&, NodeRef);
@@ -82,6 +83,10 @@ OpRef Op::mul(NodeRef other) {
 
 OpRef Op::dot(NodeRef other) {
   return op<DotKernel, NodeRef>("dot", other);
+}
+
+OpRef Op::mm(NodeRef other) {
+  return op<MatMulKernel, NodeRef>("mm", other);
 }
 
 OpRef Op::bmm(NodeRef other) {
